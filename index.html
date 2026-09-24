@@ -19,7 +19,7 @@
             flex-direction: column; 
         }
 
-        /* BARRA SUPERIOR UNIFICADA */
+        /* BARRA SUPERIOR */
         #top-bar { 
             display: flex; 
             align-items: center; 
@@ -78,7 +78,7 @@
             box-shadow: 0 0 8px rgba(41, 98, 255, 0.4);
         }
 
-        /* CONTENEDOR PRINCIPAL */
+        /* WORKSPACE */
         #workspace { 
             flex: 1; 
             display: flex;
@@ -88,7 +88,7 @@
             overflow: hidden;
         }
 
-        /* PANEL HTF IZQUIERDO */
+        /* PANEL HTF CANDLE */
         #htf-draw-panel {
             width: 200px; 
             background-color: #12161f; 
@@ -113,14 +113,14 @@
 
         #htf-svg { width: 100%; height: 100%; overflow: visible; }
 
-        /* GRÁFICO */
+        /* ÁREA DEL GRÁFICO */
         #chart-container { 
             flex: 1; 
             height: 100%; 
             position: relative;
         }
 
-        /* BANNER DE DECISIÓN CRL */
+        /* BANNER AUTOMÁTICO DE DECISIÓN CRL */
         #auto-decision-box {
             position: absolute; 
             top: 16px; 
@@ -145,7 +145,7 @@
         .state-sell { color: #ff5252; border-color: #ff5252 !important; }
         .state-wait { color: #ffb300; border-color: #ffb300 !important; }
 
-        /* DASHBOARD MTF */
+        /* DASHBOARD MTF FLOTANTE */
         #vsa-dashboard-overlay { 
             position: absolute;
             top: 16px;
@@ -283,7 +283,7 @@
         let showBuySellSignals = true;
         let showDashboardMTF = true;
 
-        let activeSRLines = [];
+        let activeSRSeries = []; // Guardará las series de las líneas de segmento VSA
         let activeHTFLines = [];
         let currentCandleData = [];
         let wsConnection = null;
@@ -347,36 +347,67 @@
             return [];
         }
 
-        // DIBUJA LOS SOPORTES Y RESISTENCIAS DE BALLENAS IDÉNTICOS AL ORIGINAL
+        // RENDERIZA LAS LÍNEAS COMO SEGMENTOS CORTOS (MÓDULOS DE BALLENAS IDÉNTICOS AL ORIGINAL)
         function renderSRLevels(currentPrice) {
-            activeSRLines.forEach(line => { try { candlestickSeries.removePriceLine(line); } catch(e){} });
-            activeSRLines = [];
+            // Elimina series previas de segmentos
+            activeSRSeries.forEach(s => { try { chart.removeSeries(s); } catch(e){} });
+            activeSRSeries = [];
 
-            if (!showSRLines) return;
+            if (!showSRLines || currentCandleData.length < 20) return;
 
-            // Tipos de línea: 0 = Solida, 1 = Punteada (Dotted), 2 = Trazo (Dashed)
+            // Tomamos un rango corto de velas recientes para que los segmentos no atraviesen todo el gráfico
+            const length = currentCandleData.length;
+            const segmentStartIdx = Math.max(0, length - 25);
+            const startTime = currentCandleData[segmentStartIdx].time;
+            const endTime = currentCandleData[length - 1].time;
+
             const srConfig = [
-                { price: currentPrice + 680, color: '#f6465d', title: 'Res 1H', lineStyle: 0, lineWidth: 2 },
-                { price: currentPrice + 520, color: '#f6465d', title: 'Res 5m', lineStyle: 0, lineWidth: 2 },
-                { price: currentPrice + 390, color: '#9c27b0', title: 'Sop 4H', lineStyle: 0, lineWidth: 2 },
-                { price: currentPrice + 190, color: '#f6465d', title: 'Res Chart', lineStyle: 0, lineWidth: 2 },
-                { price: currentPrice + 110, color: '#f6465d', title: 'Res 15m', lineStyle: 0, lineWidth: 1 },
-                { price: currentPrice - 90,  color: '#00bcd4', title: 'Sop Chart', lineStyle: 0, lineWidth: 2 },
-                { price: currentPrice - 160, color: '#00bcd4', title: 'Sop 15m', lineStyle: 0, lineWidth: 1 },
+                { price: currentPrice + 680, color: '#f6465d', title: 'Res 1H', lineStyle: 0, lineWidth: 3 },
+                { price: currentPrice + 520, color: '#f6465d', title: 'Res 5m', lineStyle: 0, lineWidth: 3 },
+                { price: currentPrice + 390, color: '#8e24aa', title: 'Sop 4H', lineStyle: 0, lineWidth: 3 },
+                { price: currentPrice + 190, color: '#f6465d', title: 'Res Chart', lineStyle: 0, lineWidth: 3 },
+                { price: currentPrice + 110, color: '#f6465d', title: 'Res 15m', lineStyle: 0, lineWidth: 2 },
+                { price: currentPrice - 90,  color: '#00bcd4', title: 'Sop Chart', lineStyle: 0, lineWidth: 3 },
+                { price: currentPrice - 160, color: '#00bcd4', title: 'Sop 15m', lineStyle: 0, lineWidth: 2 },
                 { price: currentPrice - 610, color: '#00bcd4', title: 'Sop 5m', lineStyle: 2, lineWidth: 2 },
-                { price: currentPrice - 1380, color: '#2962ff', title: 'Sop 1H', lineStyle: 0, lineWidth: 2 }
+                { price: currentPrice - 1380, color: '#2962ff', title: 'Sop 1H', lineStyle: 0, lineWidth: 4 }
             ];
 
             srConfig.forEach(cfg => {
-                const line = candlestickSeries.createPriceLine({
+                const lineSeries = chart.addSeries
+                    ? chart.addSeries(LightweightCharts.LineSeries, {
+                        color: cfg.color,
+                        lineWidth: cfg.lineWidth,
+                        lineStyle: cfg.lineStyle,
+                        crosshairMarkerVisible: false,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    })
+                    : chart.addLineSeries({
+                        color: cfg.color,
+                        lineWidth: cfg.lineWidth,
+                        lineStyle: cfg.lineStyle,
+                        crosshairMarkerVisible: false,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+
+                // Solo 2 puntos para crear el segmento corto horizontal
+                lineSeries.setData([
+                    { time: startTime, value: cfg.price },
+                    { time: endTime, value: cfg.price }
+                ]);
+
+                // Etiqueta flotante con estilo badge incrustada en el borde del segmento
+                lineSeries.createPriceLine({
                     price: cfg.price,
                     color: cfg.color,
-                    lineWidth: cfg.lineWidth,
-                    lineStyle: cfg.lineStyle,
+                    lineWidth: 0, // Invisible para no cruzar todo el gráfico
                     axisLabelVisible: true,
                     title: cfg.title
                 });
-                activeSRLines.push(line);
+
+                activeSRSeries.push(lineSeries);
             });
         }
 
@@ -484,6 +515,7 @@
                 if (lastIdx >= 0 && currentCandleData[lastIdx].time === candle.time) currentCandleData[lastIdx] = candle;
                 else currentCandleData.push(candle);
 
+                renderSRLevels(candle.close);
                 processSignalsAndDecision();
             };
         }
