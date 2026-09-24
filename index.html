@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - Unificado (CRT + VSA)</title>
+    <title>Bitcoin Trading Terminal - Unificado Exacto</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,10 +32,10 @@
             width: 100%;
         }
 
-        .controls-left { display: flex; align-items: center; gap: 12px; }
+        .controls-left { display: flex; align-items: center; gap: 10px; }
         .controls-right { display: flex; align-items: center; gap: 8px; }
 
-        label { font-size: 12px; color: #848e9c; font-weight: 500; }
+        label { font-size: 11px; color: #848e9c; font-weight: 600; }
         
         select { 
             background-color: #1e232d; 
@@ -58,10 +58,8 @@
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 5px;
         }
 
-        /* BOTONES DE CONTROL */
         .btn-toggle { 
             background-color: #2b313a; 
             color: #848e9c; 
@@ -80,7 +78,7 @@
             box-shadow: 0 0 8px rgba(41, 98, 255, 0.4);
         }
 
-        /* CONTENEDOR PRINCIPAL FLEX */
+        /* CONTENEDOR PRINCIPAL */
         #workspace { 
             flex: 1; 
             display: flex;
@@ -90,7 +88,7 @@
             overflow: hidden;
         }
 
-        /* PANEL IZQUIERDO: DIBUJO HTF CANDLE */
+        /* PANEL HTF IZQUIERDO */
         #htf-draw-panel {
             width: 200px; 
             background-color: #12161f; 
@@ -115,14 +113,14 @@
 
         #htf-svg { width: 100%; height: 100%; overflow: visible; }
 
-        /* ÁREA DEL GRÁFICO PRINCIPAL */
+        /* GRÁFICO */
         #chart-container { 
             flex: 1; 
             height: 100%; 
             position: relative;
         }
 
-        /* BANNER AUTOMÁTICO DE DECISIÓN CRL */
+        /* BANNER DE DECISIÓN CRL */
         #auto-decision-box {
             position: absolute; 
             top: 16px; 
@@ -135,7 +133,6 @@
             min-width: 280px;
             backdrop-filter: blur(8px); 
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-            transition: opacity 0.2s ease;
         }
 
         .hidden { display: none !important; }
@@ -148,13 +145,13 @@
         .state-sell { color: #ff5252; border-color: #ff5252 !important; }
         .state-wait { color: #ffb300; border-color: #ffb300 !important; }
 
-        /* DASHBOARD VSA Y MTF FLOTANTE */
+        /* DASHBOARD MTF */
         #vsa-dashboard-overlay { 
             position: absolute;
             top: 16px;
             right: 80px;
-            width: 280px;
-            background-color: rgba(18, 22, 31, 0.92); 
+            width: 285px;
+            background-color: rgba(18, 22, 31, 0.95); 
             border: 1px solid #2a2e39; 
             border-radius: 6px; 
             padding: 10px; 
@@ -179,14 +176,13 @@
         .txt-sell { color: #f6465d; }
 
         .vsa-config-box { background-color: #0b0e14; border: 1px solid #1e232d; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-        .vsa-config-title { font-size: 10px; font-weight: 700; color: #848e9c; text-transform: uppercase; letter-spacing: 0.5px; }
+        .vsa-config-title { font-size: 10px; font-weight: 700; color: #848e9c; text-transform: uppercase; }
         .vsa-config-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #d1d4dc; }
         .vsa-config-row input { width: 45px; background-color: #1e232d; border: 1px solid #2a2e39; color: #ffffff; text-align: right; padding: 2px 4px; border-radius: 3px; font-size: 11px; }
     </style>
 </head>
 <body>
 
-    <!-- BARRA SUPERIOR UNIFICADA CON CONTROLES HTF Y LTF -->
     <div id="top-bar">
         <div class="controls-left">
             <span style="font-weight: 800; font-size: 13px; color: #fff; margin-right: 4px;">CRL :)</span>
@@ -216,7 +212,6 @@
     </div>
 
     <div id="workspace">
-        <!-- VELA HTF DIBUJADA EN PANEL IZQUIERDO -->
         <div id="htf-draw-panel">
             <div class="panel-title" id="htf-name-label">1H - HTF CANDLE</div>
             <svg id="htf-svg" viewBox="0 0 160 400">
@@ -237,16 +232,13 @@
             </svg>
         </div>
 
-        <!-- GRÁFICO PRINCIPAL -->
         <div id="chart-container">
-            <!-- BANNER DE DECISIÓN CRL -->
             <div id="auto-decision-box" class="state-wait">
                 <div class="dec-title">ANALIZADOR AUTOMÁTICO CRL</div>
                 <div id="dec-action" class="dec-action">ANALIZANDO...</div>
                 <div id="dec-reason" class="dec-reason">Evaluando posición respecto a niveles HTF.</div>
             </div>
 
-            <!-- DASHBOARD MTF Y VSA FLOTANTE -->
             <div id="vsa-dashboard-overlay">
                 <table class="vsa-table">
                     <thead>
@@ -355,27 +347,34 @@
             return [];
         }
 
+        // DIBUJA LOS SOPORTES Y RESISTENCIAS DE BALLENAS IDÉNTICOS AL ORIGINAL
         function renderSRLevels(currentPrice) {
             activeSRLines.forEach(line => { try { candlestickSeries.removePriceLine(line); } catch(e){} });
             activeSRLines = [];
 
             if (!showSRLines) return;
 
+            // Tipos de línea: 0 = Solida, 1 = Punteada (Dotted), 2 = Trazo (Dashed)
             const srConfig = [
-                { price: currentPrice + 680, color: '#f6465d', title: 'Res 1H' },
-                { price: currentPrice + 520, color: '#f6465d', title: 'Res 5m' },
-                { price: currentPrice + 390, color: '#9c27b0', title: 'Sop 4H' },
-                { price: currentPrice + 190, color: '#f6465d', title: 'Res Chart' },
-                { price: currentPrice + 110, color: '#f6465d', title: 'Res 15m' },
-                { price: currentPrice - 90,  color: '#00bcd4', title: 'Sop Chart' },
-                { price: currentPrice - 160, color: '#00bcd4', title: 'Sop 15m' },
-                { price: currentPrice - 610, color: '#00bcd4', title: 'Sop 5m' },
-                { price: currentPrice - 1380, color: '#2962ff', title: 'Sop 1H' }
+                { price: currentPrice + 680, color: '#f6465d', title: 'Res 1H', lineStyle: 0, lineWidth: 2 },
+                { price: currentPrice + 520, color: '#f6465d', title: 'Res 5m', lineStyle: 0, lineWidth: 2 },
+                { price: currentPrice + 390, color: '#9c27b0', title: 'Sop 4H', lineStyle: 0, lineWidth: 2 },
+                { price: currentPrice + 190, color: '#f6465d', title: 'Res Chart', lineStyle: 0, lineWidth: 2 },
+                { price: currentPrice + 110, color: '#f6465d', title: 'Res 15m', lineStyle: 0, lineWidth: 1 },
+                { price: currentPrice - 90,  color: '#00bcd4', title: 'Sop Chart', lineStyle: 0, lineWidth: 2 },
+                { price: currentPrice - 160, color: '#00bcd4', title: 'Sop 15m', lineStyle: 0, lineWidth: 1 },
+                { price: currentPrice - 610, color: '#00bcd4', title: 'Sop 5m', lineStyle: 2, lineWidth: 2 },
+                { price: currentPrice - 1380, color: '#2962ff', title: 'Sop 1H', lineStyle: 0, lineWidth: 2 }
             ];
 
             srConfig.forEach(cfg => {
                 const line = candlestickSeries.createPriceLine({
-                    price: cfg.price, color: cfg.color, lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: cfg.title
+                    price: cfg.price,
+                    color: cfg.color,
+                    lineWidth: cfg.lineWidth,
+                    lineStyle: cfg.lineStyle,
+                    axisLabelVisible: true,
+                    title: cfg.title
                 });
                 activeSRLines.push(line);
             });
@@ -489,19 +488,15 @@
             };
         }
 
-        // TOGGLE CRL COMPLETO (PANEL IZQUIERDO + BANNER + LÍNEAS BSL/SSL/EQ)
         btnCRL.addEventListener('click', () => {
             showCRL = !showCRL;
             btnCRL.classList.toggle('active', showCRL);
-            
-            // Mostrar/Ocultar elementos CRL
             boxDecision.classList.toggle('hidden', !showCRL);
             htfPanel.classList.toggle('hidden', !showCRL);
             
             loadHTFData();
             processSignalsAndDecision();
             
-            // Reajustar tamaño del gráfico
             setTimeout(() => {
                 chart.applyOptions({ width: chartContainer.clientWidth });
             }, 50);
