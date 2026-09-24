@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Master Trading Terminal - VSA, SMC & CRL/CRT Automated System</title>
+    <title>Bitcoin Trading Terminal - S/R VSA Ballenas & MTF</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11,531 +11,367 @@
         html, body { 
             width: 100vw; 
             height: 100vh; 
-            max-width: 100vw; 
-            max-height: 100vh; 
             overflow: hidden; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background-color: #0d1117; 
+            background-color: #0b0e14; 
             color: #d1d4dc; 
             display: flex; 
             flex-direction: column; 
         }
 
+        /* BARRA SUPERIOR EXACTA A LA CAPTURA */
         #top-bar { 
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
-            padding: 4px 10px; 
-            background-color: #161b22; 
-            border-bottom: 1px solid #30363d; 
+            padding: 6px 16px; 
+            background-color: #12161f; 
+            border-bottom: 1px solid #1e232d; 
             flex-shrink: 0; 
-            min-height: 44px;
+            height: 48px;
             width: 100%;
-            overflow-x: auto;
         }
 
-        .controls-group { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
-        label { font-size: 11px; color: #8b949e; font-weight: bold; }
-        select, button { 
-            background-color: #21262d; 
+        .controls-left { display: flex; align-items: center; gap: 12px; }
+        .controls-right { display: flex; align-items: center; gap: 8px; }
+
+        label { font-size: 12px; color: #848e9c; font-weight: 500; }
+        
+        select { 
+            background-color: #1e232d; 
             color: #d1d4dc; 
-            border: 1px solid #30363d; 
-            padding: 4px 8px; 
+            border: 1px solid #2a2e39; 
+            padding: 5px 10px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            outline: none;
+            cursor: pointer; 
+        }
+
+        .status-badge {
+            background-color: rgba(14, 203, 129, 0.15);
+            color: #0ecb81;
+            border: 1px solid rgba(14, 203, 129, 0.4);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* BOTONES ESTILO TRADINGVIEW EN LA ESQUINA DERECHA */
+        .btn-toggle { 
+            background-color: #2b313a; 
+            color: #848e9c; 
+            border: none; 
+            padding: 6px 14px; 
             border-radius: 4px; 
             font-size: 11px; 
+            font-weight: 700;
             cursor: pointer; 
-            transition: all 0.2s; 
-            white-space: nowrap;
+            transition: all 0.2s ease;
         }
-        select:hover, button:hover { background-color: #30363d; }
-        button.active { background-color: #2962ff; color: #ffffff; border-color: #2962ff; }
-        button.inactive { opacity: 0.5; }
-        #status { font-size: 11px; color: #2962ff; font-weight: bold; }
+        
+        .btn-toggle.active { 
+            background-color: #2962ff; 
+            color: #ffffff; 
+            box-shadow: 0 0 8px rgba(41, 98, 255, 0.4);
+        }
 
+        /* ÁREA DEL GRÁFICO Y CONTENEDOR */
         #workspace { 
-            display: flex; 
             flex: 1; 
             position: relative; 
-            overflow: hidden; 
             width: 100%; 
-            height: calc(100vh - 44px); 
+            height: calc(100vh - 48px); 
+            overflow: hidden;
         }
-
-        /* PANEL IZQUIERDO HTF DIBUJADO */
-        #htf-draw-panel {
-            width: 180px; 
-            min-width: 180px;
-            background-color: #161b22; 
-            border-right: 1px solid #30363d;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 10px 5px; 
-            z-index: 5;
-            flex-shrink: 0;
-        }
-        .panel-title { font-size: 10px; font-weight: 700; color: #8b949e; text-transform: uppercase; margin-bottom: 8px; text-align: center; }
-        #htf-svg { width: 100%; height: 100%; overflow: visible; }
-
-        /* BANNER AUTOMÁTICO DE DECISIÓN CRL/CRT */
-        #auto-decision-box {
-            position: absolute; top: 12px; left: 195px; z-index: 10;
-            background: rgba(22, 27, 34, 0.92); border: 2px solid #30363d;
-            border-radius: 8px; padding: 8px 14px; min-width: 280px;
-            backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            transition: all 0.3s ease;
-        }
-        .dec-title { font-size: 9px; text-transform: uppercase; color: #8b949e; font-weight: 700; letter-spacing: 0.5px; }
-        .dec-action { font-size: 13px; font-weight: 800; margin: 2px 0; }
-        .dec-reason { font-size: 10px; color: #c9d1d9; }
-        
-        .state-buy { color: #00e676; border-color: #00e676 !important; }
-        .state-sell { color: #ff5252; border-color: #ff5252 !important; }
-        .state-wait { color: #ffb300; border-color: #ffb300 !important; }
-        .state-no-trade { color: #8b949e; border-color: #8b949e !important; }
 
         #chart-container { 
-            flex: 1; 
-            height: 100%; 
             width: 100%; 
-            min-width: 0; 
-            position: relative; 
+            height: 100%; 
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
-        #dashboard { 
-            width: 250px; 
-            min-width: 250px;
-            max-width: 250px;
-            height: 100%;
-            background-color: #161b22; 
-            border-left: 1px solid #30363d; 
-            padding: 6px; 
+        /* PANEL SOBREPUESTO MTF Y CONFIGURACIÓN VSA */
+        #vsa-dashboard-overlay { 
+            position: absolute;
+            top: 16px;
+            right: 80px;
+            width: 280px;
+            background-color: rgba(18, 22, 31, 0.92); 
+            border: 1px solid #2a2e39; 
+            border-radius: 6px; 
+            padding: 10px; 
             display: flex; 
             flex-direction: column; 
-            gap: 5px; 
-            overflow-y: auto; 
-            overflow-x: hidden;
-            flex-shrink: 0; 
+            gap: 10px; 
+            z-index: 10;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+            transition: opacity 0.2s ease, transform 0.2s ease;
         }
 
-        #dashboard::-webkit-scrollbar { width: 4px; }
-        #dashboard::-webkit-scrollbar-track { background: #0d1117; }
-        #dashboard::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
-
-        .dash-module { 
-            background-color: #0d1117; 
-            border-radius: 4px; 
-            padding: 6px 8px; 
-            border: 1px solid #30363d; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 3px; 
-            flex-shrink: 0;
-            width: 100%;
+        .vsa-dashboard-overlay.hidden {
+            display: none !important;
         }
-        .dash-module h4 { 
+
+        /* TABLA MTF VSA */
+        .vsa-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 11px; 
+        }
+
+        .vsa-table th { 
+            text-align: left; 
+            color: #2962ff; 
+            padding: 4px 2px; 
+            font-weight: 700; 
+            border-bottom: 1px solid #2a2e39; 
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .vsa-table td { 
+            padding: 5px 2px; 
+            text-align: right; 
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .vsa-table td:first-child { 
+            text-align: left; 
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .badge-vsa { 
+            padding: 2px 6px; 
+            border-radius: 3px; 
             font-size: 10px; 
-            color: #8b949e; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-            margin-bottom: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-weight: 800; 
+            display: inline-block; 
+            text-align: center; 
+            min-width: 42px;
         }
-        .dash-row { 
-            display: flex; 
-            justify-content: space-between; 
-            font-size: 10px; 
-            align-items: center; 
-            gap: 4px;
-            width: 100%;
+
+        .badge-buy { background-color: #0ecb81; color: #000000; }
+        .badge-sell { background-color: #f6465d; color: #ffffff; }
+
+        .txt-buy { color: #0ecb81; }
+        .txt-sell { color: #f6465d; }
+
+        /* PANEL DE CONFIGURACIÓN VSA */
+        .vsa-config-box {
+            background-color: #0b0e14;
+            border: 1px solid #1e232d;
+            border-radius: 4px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
-        .dash-row > span:first-child { color: #9db2c6; }
-        .dash-val { font-weight: bold; text-align: right; }
 
-        .vsa-table { width: 100%; border-collapse: collapse; font-size: 9px; margin-top: 2px; }
-        .vsa-table th { text-align: left; color: #8b949e; padding: 2px 0; font-weight: normal; border-bottom: 1px solid #30363d; }
-        .vsa-table td { padding: 2px 0; text-align: right; }
-        .vsa-table td:first-child { text-align: left; }
-        
-        #timer-progress-container { width: 100%; height: 3px; background-color: #21262d; border-radius: 2px; overflow: hidden; margin-top: 2px; }
-        #timer-progress { height: 100%; width: 0%; background-color: #2962ff; transition: width 1s linear; }
-        
-        .vsa-badge { padding: 1px 3px; border-radius: 2px; font-size: 8px; font-weight: bold; text-transform: uppercase; display: inline-block; text-align: center; }
-        .vsa-buy { background-color: rgba(0, 230, 118, 0.2); color: #00e676; border: 1px solid #00e676; }
-        .vsa-sell { background-color: rgba(255, 23, 68, 0.2); color: #ff1744; border: 1px solid #ff1744; }
-        .vsa-neutral { background-color: rgba(120, 123, 134, 0.2); color: #787b86; border: 1px solid #787b86; }
-        .txt-buy { color: #00e676; font-weight: bold; }
-        .txt-sell { color: #ff1744; font-weight: bold; }
-        
-        .trend-bar-bg { width: 100%; height: 5px; background-color: #21262d; border-radius: 3px; overflow: hidden; margin: 2px 0; }
-        .trend-bar-fill { height: 100%; width: 50%; background-color: #787b86; transition: all 0.5s ease; }
-        
-        .session-badge { padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: bold; text-transform: uppercase; }
-        .session-active { background-color: rgba(0, 230, 118, 0.2); color: #00e676; border: 1px solid #00e676; }
-        .session-closed { background-color: rgba(120, 123, 134, 0.1); color: #5d606b; border: 1px solid #30363d; }
+        .vsa-config-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #848e9c;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-        .news-item { display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0; border-bottom: 1px solid #21262d; }
-        .news-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 4px; }
-        .news-impact { padding: 1px 3px; border-radius: 2px; font-weight: bold; font-size: 7px; background-color: rgba(255, 23, 68, 0.2); color: #ff1744; border: 1px solid #ff1744; margin-right: 4px; }
-        .news-warning { background-color: rgba(255, 23, 68, 0.15); border: 1px solid #ff1744; color: #ff1744; font-size: 9px; padding: 3px; text-align: center; font-weight: bold; border-radius: 3px; margin-bottom: 4px; display: none; }
+        .vsa-config-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #d1d4dc;
+        }
+
+        .vsa-config-row input {
+            width: 50px;
+            background-color: #1e232d;
+            border: 1px solid #2a2e39;
+            color: #ffffff;
+            text-align: right;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
 
     <div id="top-bar">
-        <div class="controls-group">
-            <label for="tf-htf">HTF:</label>
-            <select id="tf-htf">
-                <option value="1h" selected>1 Hora</option>
+        <div class="controls-left">
+            <label for="timeframe">TF:</label>
+            <select id="timeframe">
+                <option value="1m">1 Minuto</option>
+                <option value="5m">5 Minutos</option>
+                <option value="15m" selected>15 Minutos</option>
+                <option value="1h">1 Hora</option>
                 <option value="4h">4 Horas</option>
                 <option value="1d">1 Día</option>
             </select>
-            <label for="timeframe">LTF:</label>
-            <select id="timeframe">
-                <option value="1s">1 Sec</option>
-                <option value="1m">1 Min</option>
-                <option value="3m">3 Min</option>
-                <option value="5m" selected>5 Min</option>
-                <option value="15m">15 Min</option>
-                <option value="30m">30 Min</option>
-                <option value="1h">1 Hour</option>
-                <option value="4h">4 Hours</option>
-            </select>
-            <div id="status">Conectando...</div>
+            <div id="status" class="status-badge">Conectado ✓</div>
         </div>
 
-        <div class="controls-group">
-            <button id="toggle-supertrend" class="active">Supertrend</button>
-            <button id="toggle-trendline" class="active">Tendencia</button>
-            <button id="toggle-liquidity" class="active">Liquidez</button>
-            <button id="toggle-footprint" class="active">FP POC</button>
-            <button id="toggle-pivots" class="active">Pivots</button>
-            <button id="toggle-pivots-tf" class="active">Multi-TF Pivots</button>
-            <button id="toggle-vsa" class="active">Ballenas VSA</button>
-            <button id="toggle-ob" class="active">Order Blocks</button>
-            <button id="toggle-news" class="active">Noticias USD</button>
-            <button id="toggle-htf-panel" class="active">Panel HTF</button>
+        <div class="controls-right">
+            <button id="btn-toggle-sr" class="btn-toggle active">S/R Ballenas VSA</button>
+            <button id="btn-toggle-signals" class="btn-toggle active">Señales BUY/SELL</button>
+            <button id="btn-toggle-dashboard" class="btn-toggle active">Dashboard MTF</button>
         </div>
     </div>
 
     <div id="workspace">
-        <!-- VELA HTF DIBUJADA -->
-        <div id="htf-draw-panel">
-            <div class="panel-title" id="htf-name-label">1 HOUR - HTF</div>
-            <svg id="htf-svg" viewBox="0 0 160 400">
-                <line id="htf-wick" x1="80" y1="40" x2="80" y2="360" stroke="#2962ff" stroke-width="3" />
-                <rect id="htf-body" x="40" y="100" width="80" height="180" fill="#2962ff" stroke="#2962ff" stroke-width="2" rx="3" />
-
-                <line x1="10" y1="40" x2="150" y2="40" stroke="#ff5252" stroke-width="1.5" stroke-dasharray="4,4" />
-                <text x="15" y="32" fill="#ff5252" font-size="11" font-weight="bold">BSL (High)</text>
-                <text id="txt-bsl" x="145" y="32" fill="#ff5252" font-size="10" text-anchor="end">0.00</text>
-
-                <line x1="10" y1="200" x2="150" y2="200" stroke="#ffb300" stroke-width="1.5" stroke-dasharray="2,2" />
-                <text x="15" y="192" fill="#ffb300" font-size="11" font-weight="bold">50% (EQ)</text>
-                <text id="txt-eq" x="145" y="192" fill="#ffb300" font-size="10" text-anchor="end">0.00</text>
-
-                <line x1="10" y1="360" x2="150" y2="360" stroke="#00e676" stroke-width="1.5" stroke-dasharray="4,4" />
-                <text x="15" y="352" fill="#00e676" font-size="11" font-weight="bold">SSL (Low)</text>
-                <text id="txt-ssl" x="145" y="352" fill="#00e676" font-size="10" text-anchor="end">0.00</text>
-            </svg>
-        </div>
-
-        <!-- INDICADOR AUTOMÁTICO DE DECISIÓN CRL/CRT -->
-        <div id="auto-decision-box" class="state-wait">
-            <div class="dec-title">ANALIZADOR AUTOMÁTICO CRL / CRT</div>
-            <div id="dec-action" class="dec-action">ANALIZANDO MERCADO...</div>
-            <div id="dec-reason" class="dec-reason">Evaluando posición respecto a niveles HTF.</div>
-        </div>
-
-        <!-- GRÁFICO LTF PRINCIPAL -->
+        <!-- CONTENEDOR DEL GRÁFICO PRINCIPAL -->
         <div id="chart-container"></div>
 
-        <!-- DASHBOARD DERECHO -->
-        <div id="dashboard">
-            <div class="dash-module">
-                <h4>Vela Actual</h4>
-                <div class="dash-row">
-                    <span>Cierre en:</span>
-                    <span id="timer-display" class="dash-val">00:00</span>
-                </div>
-                <div id="timer-progress-container">
-                    <div id="timer-progress"></div>
-                </div>
-            </div>
+        <!-- PANEL FLOTANTE DE VSA Y MTF -->
+        <div id="vsa-dashboard-overlay">
+            <table class="vsa-table">
+                <thead>
+                    <tr>
+                        <th>Timeframe</th>
+                        <th>Señal VSA</th>
+                        <th>Vol. Transado</th>
+                        <th>% Compra</th>
+                        <th>% Venta</th>
+                    </tr>
+                </thead>
+                <tbody id="vsa-mtf-tbody">
+                    <tr>
+                        <td>5 Minutos</td>
+                        <td><span class="badge-vsa badge-buy">BUY</span></td>
+                        <td>125.26</td>
+                        <td class="txt-buy">100.0%</td>
+                        <td class="txt-sell">0.0%</td>
+                    </tr>
+                    <tr>
+                        <td>15 Minutos</td>
+                        <td><span class="badge-vsa badge-sell">SELL</span></td>
+                        <td>19.27</td>
+                        <td class="txt-buy">25.8%</td>
+                        <td class="txt-sell">74.2%</td>
+                    </tr>
+                    <tr>
+                        <td>1 Hora</td>
+                        <td><span class="badge-vsa badge-sell">SELL</span></td>
+                        <td>2.18K</td>
+                        <td class="txt-buy">18.3%</td>
+                        <td class="txt-sell">81.7%</td>
+                    </tr>
+                    <tr>
+                        <td>4 Horas</td>
+                        <td><span class="badge-vsa badge-sell">SELL</span></td>
+                        <td>4.84K</td>
+                        <td class="txt-buy">35.5%</td>
+                        <td class="txt-sell">64.5%</td>
+                    </tr>
+                    <tr>
+                        <td>1 Diario</td>
+                        <td><span class="badge-vsa badge-buy">BUY</span></td>
+                        <td>22.15K</td>
+                        <td class="txt-buy">23.8%</td>
+                        <td class="txt-sell">76.2%</td>
+                    </tr>
+                    <tr>
+                        <td>1 Semana</td>
+                        <td><span class="badge-vsa badge-buy">BUY</span></td>
+                        <td>108.47K</td>
+                        <td class="txt-buy">88.9%</td>
+                        <td class="txt-sell">11.1%</td>
+                    </tr>
+                    <tr>
+                        <td>1 Mes</td>
+                        <td><span class="badge-vsa badge-buy">BUY</span></td>
+                        <td>11.96</td>
+                        <td class="txt-buy">0.0%</td>
+                        <td class="txt-sell">100.0%</td>
+                    </tr>
+                </tbody>
+            </table>
 
-            <div id="dash-module-news" class="dash-module" style="border: 1px solid #ff1744;">
-                <h4>Macro Eventos USD (CR)</h4>
-                <div id="news-alert-banner" class="news-warning">⚠️ NOTICIA EN BREVE</div>
-                <div id="news-list-container">
-                    <div style="font-size: 9px; color: #787b86;">Cargando eventos...</div>
+            <div class="vsa-config-box">
+                <div class="vsa-config-title">Configuración VSA</div>
+                <div class="vsa-config-row">
+                    <span>Período Prom. Vol:</span>
+                    <input type="number" id="cfg-vsa-period" value="20">
                 </div>
-            </div>
-
-            <div id="dash-module-sessions" class="dash-module">
-                <h4>Sesión de Mercado (CR)</h4>
-                <div class="dash-row" style="margin-bottom: 2px;">
-                    <span>Estado:</span>
-                    <span id="dash-active-session-text" class="dash-val" style="color: #00e676;">--</span>
+                <div class="vsa-config-row">
+                    <span>Mult. Vol Ballena:</span>
+                    <input type="number" step="0.1" id="cfg-vsa-mult" value="1.8">
                 </div>
-                <div class="dash-row">
-                    <span>Asian (Tokio):</span>
-                    <span id="sess-badge-tokyo" class="session-badge session-closed">CERRADO</span>
-                </div>
-                <div class="dash-row">
-                    <span>London (Londres):</span>
-                    <span id="sess-badge-london" class="session-badge session-closed">CERRADO</span>
-                </div>
-                <div class="dash-row">
-                    <span>New York (EE.UU.):</span>
-                    <span id="sess-badge-ny" class="session-badge session-closed">CERRADO</span>
-                </div>
-            </div>
-
-            <div id="dash-module-global-trend" class="dash-module" style="border: 1px solid #2962ff;">
-                <h4>Tendencia Global Integrated</h4>
-                <div class="dash-row">
-                    <span>Tendencia TF:</span>
-                    <span id="dash-trend-tf" class="dash-val">--</span>
-                </div>
-                <div class="trend-bar-bg"><div id="trend-bar-tf" class="trend-bar-fill"></div></div>
-
-                <div class="dash-row" style="margin-top: 3px;">
-                    <span>Tendencia Día (1D):</span>
-                    <span id="dash-trend-day" class="dash-val">--</span>
-                </div>
-                <div class="trend-bar-bg"><div id="trend-bar-day" class="trend-bar-fill"></div></div>
-                <div class="dash-row" style="font-size: 8px; color: #787b86; margin-top: 2px;">
-                    <span>Fuerza / Confluencia:</span>
-                    <span id="dash-trend-score" class="dash-val">0%</span>
-                </div>
-            </div>
-
-            <div id="dash-module-vsa" class="dash-module">
-                <h4>S/R VSA Ballenas MTF</h4>
-                <table class="vsa-table">
-                    <thead>
-                        <tr>
-                            <th>TF</th>
-                            <th>Señal</th>
-                            <th>Vol (K)</th>
-                            <th>% C</th>
-                            <th>% V</th>
-                        </tr>
-                    </thead>
-                    <tbody id="vsa-mtf-tbody">
-                        <tr><td>15M</td><td><span class="vsa-badge vsa-neutral">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr><td>1H</td><td><span class="vsa-badge vsa-neutral">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr><td>4H</td><td><span class="vsa-badge vsa-neutral">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr><td>1D</td><td><span class="vsa-badge vsa-neutral">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr><td>1W</td><td><span class="vsa-badge vsa-neutral">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="dash-module-liquidity" class="dash-module" style="border: 1px solid #ffd700;">
-                <h4>Toma Liquidez (SMC)</h4>
-                <div class="dash-row">
-                    <span>Último Sweep:</span>
-                    <span id="dash-lq-type" class="dash-val">--</span>
-                </div>
-                <div class="dash-row">
-                    <span>Nivel:</span>
-                    <span id="dash-lq-price" class="dash-val">--</span>
-                </div>
-            </div>
-
-            <div id="dash-module-ob" class="dash-module" style="border: 1px solid #26a69a;">
-                <h4>Order Blocks (SMC)</h4>
-                <div class="dash-row">
-                    <span>OB Res (Venta):</span>
-                    <span id="dash-ob-bearish" class="dash-val" style="color: #ff1744;">--</span>
-                </div>
-                <div class="dash-row">
-                    <span>OB Sop (Compra):</span>
-                    <span id="dash-ob-bullish" class="dash-val" style="color: #00e676;">--</span>
-                </div>
-            </div>
-
-            <div id="dash-module-supertrend" class="dash-module">
-                <h4>Supertrend</h4>
-                <div class="dash-row">
-                    <span>Señal:</span>
-                    <span id="dash-st-signal" class="dash-val">--</span>
-                </div>
-                <div class="dash-row">
-                    <span>Precio:</span>
-                    <span id="dash-st-price" class="dash-val">--</span>
-                </div>
-            </div>
-
-            <div id="dash-module-footprint" class="dash-module">
-                <h4>Sesgo & Liquidez</h4>
-                <div class="dash-row">
-                    <span>Tendencia:</span>
-                    <span id="dash-bias" class="dash-val">--</span>
-                </div>
-                <div class="dash-row">
-                    <span>Invalidez:</span>
-                    <span id="dash-invalid" class="dash-val">--</span>
-                </div>
-                <div class="dash-row">
-                    <span>Entrada Sug:</span>
-                    <span id="dash-entry" class="dash-val">--</span>
-                </div>
-                <div class="dash-row">
-                    <span>TP Liquidez:</span>
-                    <span id="dash-tp" class="dash-val" style="color: #00e5ff;">--</span>
-                </div>
-                <div class="dash-row">
-                    <span>Stop Loss:</span>
-                    <span id="dash-sl" class="dash-val">--</span>
-                </div>
-            </div>
-
-            <div id="dash-module-pivots" class="dash-module">
-                <h4>Objetivo Principal</h4>
-                <div class="dash-row">
-                    <span>Target Pivot:</span>
-                    <span id="dash-target" class="dash-val">--</span>
-                </div>
-            </div>
-
-            <div id="dash-module-pivots-tf" class="dash-module">
-                <h4>Matriz Pivots Multi-TF</h4>
-                <div class="dash-row"><span>15M:</span><span id="pvt-15m" class="dash-val">--</span></div>
-                <div class="dash-row"><span>1H:</span><span id="pvt-1h" class="dash-val">--</span></div>
-                <div class="dash-row"><span>4H:</span><span id="pvt-4h" class="dash-val">--</span></div>
-                <div class="dash-row"><span>1D:</span><span id="pvt-1d" class="dash-val">--</span></div>
             </div>
         </div>
     </div>
 
     <script>
     document.addEventListener("DOMContentLoaded", function () {
-        const TELEGRAM_CONFIG = { enabled: true, username: "ERC1670" };
-
-        let lastNotifiedSignalTime = null;
-        let lastNotifiedSignalType = null;
-        let audioCtx = null; 
-        let calculatedMarkers = [];
-
-        function initAudioContext() {
-            if (!audioCtx) {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                if (AudioContextClass) audioCtx = new AudioContextClass();
-            }
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        }
-        document.addEventListener('click', initAudioContext, { once: true });
-
-        const SESSION_ALERTS_CONFIG = {
-            enabled: true,
-            alerts: [
-                { name: "Tokio", hour: 17, minute: 55 },
-                { name: "Londres", hour: 1, minute: 55 },
-                { name: "Nueva York", hour: 6, minute: 55 }
-            ]
-        };
-
-        let notifiedSessionsToday = new Set();
-        let showNewsOnChart = true;
-        let cachedEconomicEvents = [];
-        let notifiedNewsToday = new Set();
-
-        const statusEl = document.getElementById("status");
-        const timeframeSelect = document.getElementById("timeframe");
-        const selectHTF = document.getElementById("tf-htf");
-        const chartContainer = document.getElementById("chart-container");
-        const htfPanel = document.getElementById("htf-draw-panel");
-
-        const btnPivots = document.getElementById("toggle-pivots");
-        const btnPivotsTf = document.getElementById("toggle-pivots-tf");
-        const btnVsa = document.getElementById("toggle-vsa");
-        const btnOb = document.getElementById("toggle-ob");
-        const btnSupertrend = document.getElementById("toggle-supertrend");
-        const btnTrendline = document.getElementById("toggle-trendline");
-        const btnLiquidity = document.getElementById("toggle-liquidity");
-        const btnFootprint = document.getElementById("toggle-footprint");
-        const btnNews = document.getElementById("toggle-news");
-        const btnHtfPanel = document.getElementById("toggle-htf-panel");
-
-        const boxDecision = document.getElementById("auto-decision-box");
-        const txtAction = document.getElementById("dec-action");
-        const txtReason = document.getElementById("dec-reason");
-
-        const modSupertrend = document.getElementById("dash-module-supertrend");
-        const modLiquidity = document.getElementById("dash-module-liquidity");
-        const modFootprint = document.getElementById("dash-module-footprint");
-        const modPivots = document.getElementById("dash-module-pivots");
-        const modPivotsTf = document.getElementById("dash-module-pivots-tf");
-        const modVsa = document.getElementById("dash-module-vsa");
-        const modOb = document.getElementById("dash-module-ob");
-
-        const dashTrendTf = document.getElementById("dash-trend-tf");
-        const dashTrendDay = document.getElementById("dash-trend-day");
-        const trendBarTf = document.getElementById("trend-bar-tf");
-        const trendBarDay = document.getElementById("trend-bar-day");
-        const dashTrendScore = document.getElementById("dash-trend-score");
-
-        const dashLqType = document.getElementById("dash-lq-type");
-        const dashLqPrice = document.getElementById("dash-lq-price");
-        const dashObBearish = document.getElementById("dash-ob-bearish");
-        const dashObBullish = document.getElementById("dash-ob-bullish");
-
-        let showPivots = true, showPivotsTf = true, showVsa = true, showOb = true;
-        let showSupertrend = true, showTrendline = true, showLiquidity = true, showFootprint = true, showHtfPanel = true;
-
-        const timerDisplay = document.getElementById("timer-display");
-        const timerProgress = document.getElementById("timer-progress");
-        const dashStSignal = document.getElementById("dash-st-signal");
-        const dashStPrice = document.getElementById("dash-st-price");
-        const dashBias = document.getElementById("dash-bias");
-        const dashTarget = document.getElementById("dash-target");
-        const dashInvalid = document.getElementById("dash-invalid");
-        const dashEntry = document.getElementById("dash-entry");
-        const dashTp = document.getElementById("dash-tp");
-        const dashSl = document.getElementById("dash-sl");
+        // VARIABLES DE ESTADO Y VISIBILIDAD DE CAPAS
+        let showSRLines = true;
+        let showBuySellSignals = true;
+        let showDashboardMTF = true;
 
         let activePriceLines = [];
-        let htfPriceLines = [];
-        let wsConnection = null;
         let currentCandleData = [];
-        let timerInterval = null;
-        let currentFootprintRes = null;
-        let currentMainTarget = null;
-        let currentSupertrendSignal = null;
-        let dailyCandlesCache = null;
+        let wsConnection = null;
 
-        let currentHigh = 0, currentLow = 0, currentEQ = 0;
+        // ELEMENTOS DEL DOM
+        const timeframeSelect = document.getElementById("timeframe");
+        const chartContainer = document.getElementById("chart-container");
+        const dashboardOverlay = document.getElementById("vsa-dashboard-overlay");
 
-        const klineCache = new Map();
+        const btnSR = document.getElementById("btn-toggle-sr");
+        const btnSignals = document.getElementById("btn-toggle-signals");
+        const btnDashboard = document.getElementById("btn-toggle-dashboard");
 
-        const multiTfConfig = [
-            { tf: '15m', colorRes: '#ff9800', colorSup: '#2196f3', label: '15M' },
-            { tf: '1h',  colorRes: '#e91e63', colorSup: '#00bcd4', label: '1H' },
-            { tf: '4h',  colorRes: '#9c27b0', colorSup: '#4caf50', label: '4H' },
-            { tf: '1d',  colorRes: '#ff1744', colorSup: '#00e676', label: '1D' }
-        ];
-
+        // INICIALIZACIÓN DEL GRÁFICO TRADINGVIEW LIGHTWEIGHT CHARTS
         const chart = LightweightCharts.createChart(chartContainer, {
             width: chartContainer.clientWidth,
             height: chartContainer.clientHeight,
-            layout: { background: { type: 'solid', color: '#0d1117' }, textColor: '#d1d4dc' },
-            grid: { vertLines: { color: 'rgba(42, 46, 57, 0.5)' }, horzLines: { color: 'rgba(42, 46, 57, 0.5)' } },
-            timeScale: { borderColor: '#30363d', timeVisible: true, secondsVisible: true },
-            rightPriceScale: { autoScale: true, alignLabels: true, borderVisible: true, scaleMargins: { top: 0.1, bottom: 0.1 } }
+            layout: { 
+                background: { type: 'solid', color: '#0b0e14' }, 
+                textColor: '#d1d4dc' 
+            },
+            grid: { 
+                vertLines: { color: 'rgba(30, 35, 45, 0.6)' }, 
+                horzLines: { color: 'rgba(30, 35, 45, 0.6)' } 
+            },
+            timeScale: { 
+                borderColor: '#1e232d', 
+                timeVisible: true, 
+                secondsVisible: false 
+            },
+            rightPriceScale: { 
+                borderColor: '#1e232d',
+                autoScale: true,
+                alignLabels: true
+            }
         });
 
         const candlestickSeries = chart.addSeries 
-            ? chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#089981', downColor: '#f23645', borderVisible: false, wickUpColor: '#089981', wickDownColor: '#f23645' })
-            : chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderVisible: false, wickUpColor: '#089981', wickDownColor: '#f23645' });
+            ? chart.addSeries(LightweightCharts.CandlestickSeries, { 
+                upColor: '#0ecb81', 
+                downColor: '#f6465d', 
+                borderVisible: false, 
+                wickUpColor: '#0ecb81', 
+                wickDownColor: '#f6465d' 
+              })
+            : chart.addCandlestickSeries({ 
+                upColor: '#0ecb81', 
+                downColor: '#f6465d', 
+                borderVisible: false, 
+                wickUpColor: '#0ecb81', 
+                wickDownColor: '#f6465d' 
+              });
 
-        const trendLineSeries = chart.addSeries
-            ? chart.addSeries(LightweightCharts.LineSeries, { color: '#2962ff', lineWidth: 3, lineStyle: LightweightCharts.LineStyle.Solid })
-            : chart.addLineSeries({ color: '#2962ff', lineWidth: 3, lineStyle: LightweightCharts.LineStyle.Solid });
-
+        // RESPONSIVIDAD AL CAMBIAR TAMAÑO DE VENTANA
         const resizeObserver = new ResizeObserver(entries => {
             if (!entries || entries.length === 0) return;
             const { width, height } = entries[0].contentRect;
@@ -543,393 +379,139 @@
         });
         resizeObserver.observe(chartContainer);
 
-        function updateSessionsDashboard() {
-            const now = new Date();
-            const hour = now.getHours();
-            const min = now.getMinutes();
-            const timeVal = hour + (min / 60);
-
-            const isTokyo = (timeVal >= 18 || timeVal < 3);
-            const isLondon = (timeVal >= 2 && timeVal < 10);
-            const isNY = (timeVal >= 7 && timeVal < 15);
-
-            const badgeTokyo = document.getElementById("sess-badge-tokyo");
-            const badgeLondon = document.getElementById("sess-badge-london");
-            const badgeNY = document.getElementById("sess-badge-ny");
-            const activeText = document.getElementById("dash-active-session-text");
-
-            badgeTokyo.className = isTokyo ? "session-badge session-active" : "session-badge session-closed";
-            badgeTokyo.innerText = isTokyo ? "ABIERTO" : "CERRADO";
-
-            badgeLondon.className = isLondon ? "session-badge session-active" : "session-badge session-closed";
-            badgeLondon.innerText = isLondon ? "ABIERTO" : "CERRADO";
-
-            badgeNY.className = isNY ? "session-badge session-active" : "session-badge session-closed";
-            badgeNY.innerText = isNY ? "ABIERTO" : "CERRADO";
-
-            const activeNames = [];
-            if (isTokyo) activeNames.push("Tokio");
-            if (isLondon) activeNames.push("Londres");
-            if (isNY) activeNames.push("NY");
-
-            if (activeNames.length > 1) {
-                activeText.innerText = `TRASLAPE 🔥`;
-                activeText.style.color = "#ff9800";
-            } else if (activeNames.length === 1) {
-                activeText.innerText = `${activeNames[0]} 🟢`;
-                activeText.style.color = "#00e676";
-            } else {
-                activeText.innerText = "ASIA TARDÍA 🌙";
-                activeText.style.color = "#787b86";
-            }
-        }
-
-        function playBeepSound(type) {
-            try {
-                initAudioContext();
-                if (!audioCtx) return;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                if (type === "BUY") {
-                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.3);
-                } else {
-                    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.3);
-                }
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-                osc.start(audioCtx.currentTime);
-                osc.stop(audioCtx.currentTime + 0.3);
-            } catch (e) {}
-        }
-
-        async function fetchKlines(interval, limit = 500) {
-            const cacheKey = `${interval}_${limit}`;
-            const now = Date.now();
-            if (klineCache.has(cacheKey)) {
-                const cached = klineCache.get(cacheKey);
-                if (now - cached.timestamp < 4000) return cached.data;
-            }
-
-            const is1s = interval === "1s";
-            const endpoint = is1s ? 'uiKlines' : 'klines';
-            const apiInterval = is1s ? '1s' : interval;
-
-            const urls = [
-                `https://api1.binance.com/api/v3/${endpoint}?symbol=BTCUSDT&interval=${apiInterval}&limit=${limit}`,
-                `https://api3.binance.com/api/v3/${endpoint}?symbol=BTCUSDT&interval=${apiInterval}&limit=${limit}`,
-                `https://api.binance.com/api/v3/${endpoint}?symbol=BTCUSDT&interval=${apiInterval}&limit=${limit}`
-            ];
-
-            let data = null;
-            for (const url of urls) {
-                try {
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        data = await res.json();
-                        if (data && Array.isArray(data) && data.length > 0) break;
-                    }
-                } catch (e) {}
-            }
-
-            if (!data || !Array.isArray(data)) return [];
-
-            const formatted = data.map(d => ({
-                time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
-            }));
-
-            klineCache.set(cacheKey, { timestamp: now, data: formatted });
-            return formatted;
-        }
-
-        async function loadHTFData() {
-            const htfVal = selectHTF.value;
-            document.getElementById('htf-name-label').innerText = `${htfVal.toUpperCase()} - HTF CANDLE`;
-
-            const htfData = await fetchKlines(htfVal, 5);
-            if (htfData.length < 2) return;
-
-            const candle = htfData[htfData.length - 2];
-            currentHigh = candle.high;
-            currentLow = candle.low;
-            currentEQ = currentLow + (currentHigh - currentLow) * 0.5;
-
-            document.getElementById('txt-bsl').innerText = `$${currentHigh.toFixed(1)}`;
-            document.getElementById('txt-eq').innerText = `$${currentEQ.toFixed(1)}`;
-            document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
-
-            htfPriceLines.forEach(line => { try{ candlestickSeries.removePriceLine(line); }catch(e){} });
-            htfPriceLines = [];
-
-            htfPriceLines.push(candlestickSeries.createPriceLine({ price: currentHigh, color: '#ff5252', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'BSL HTF' }));
-            htfPriceLines.push(candlestickSeries.createPriceLine({ price: currentEQ, color: '#ffb300', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid, title: '50% EQ HTF' }));
-            htfPriceLines.push(candlestickSeries.createPriceLine({ price: currentLow, color: '#00e676', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'SSL HTF' }));
-        }
-
-        function evaluateAutomatedTrade() {
-            if (currentCandleData.length < 2 || !currentHigh || !currentLow) return;
-
-            const lastBar = currentCandleData[currentCandleData.length - 1];
-            let decisionMarkers = [];
-
-            if (lastBar.low < currentLow && lastBar.close > currentLow) {
-                boxDecision.className = "state-buy";
-                txtAction.innerText = "🚀 ENTRAR EN COMPRA (LONG)";
-                txtReason.innerText = `Barrido de SSL HTF detectado. Stop Loss: $${lastBar.low.toFixed(1)} | TP: $${currentEQ.toFixed(1)}`;
-                decisionMarkers.push({ time: lastBar.time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'CRL: COMPRA SSL' });
-            }
-            else if (lastBar.high > currentHigh && lastBar.close < currentHigh) {
-                boxDecision.className = "state-sell";
-                txtAction.innerText = "🐻 ENTRAR EN VENTA (SHORT)";
-                txtReason.innerText = `Barrido de BSL HTF detectado. Stop Loss: $${lastBar.high.toFixed(1)} | TP: $${currentEQ.toFixed(1)}`;
-                decisionMarkers.push({ time: lastBar.time, position: 'aboveBar', color: '#ff5252', shape: 'arrowDown', text: 'CRL: VENTA BSL' });
-            }
-            else if (lastBar.close > currentHigh || lastBar.close < currentLow) {
-                boxDecision.className = "state-no-trade";
-                txtAction.innerText = "⛔ NO OPERAR (BREAKOUT DETECTADO)";
-                txtReason.innerText = "Ruptura limpia del rango HTF. Entrada invalidada.";
-            }
-            else {
-                boxDecision.className = "state-wait";
-                txtAction.innerText = "⏳ ESPERAR OPORTUNIDAD";
-                txtReason.innerText = "Precio en zona media. Esperando barrido de SSL o BSL.";
-            }
-
-            return decisionMarkers;
-        }
-
-        function clearActiveLines() {
-            activePriceLines.forEach(line => { try { candlestickSeries.removePriceLine(line); } catch(e){} });
+        // FUNCIÓN PARA LIMPIAR LÍNEAS DE SOPORTE Y RESISTENCIA
+        function clearPriceLines() {
+            activePriceLines.forEach(line => {
+                try { candlestickSeries.removePriceLine(line); } catch(e){}
+            });
             activePriceLines = [];
         }
 
-        function calculateLiquiditySweeps(candles, lookback = 15) {
-            const markers = [];
-            let lastSweep = null;
-            if (!candles || candles.length < lookback + 1) return { markers, lastSweep };
-
-            for (let i = lookback; i < candles.length; i++) {
-                const current = candles[i];
-                let prevHigh = -Infinity, prevLow = Infinity;
-                for (let j = i - lookback; j < i; j++) {
-                    if (candles[j].high > prevHigh) prevHigh = candles[j].high;
-                    if (candles[j].low < prevLow) prevLow = candles[j].low;
-                }
-
-                if (current.low < prevLow && current.close > prevLow) {
-                    markers.push({ time: current.time, position: 'belowBar', color: '#ffd700', shape: 'square', text: '⚡ LQ BUY' });
-                    lastSweep = { type: 'LQ BUY ⚡', price: current.low, time: current.time };
-                }
-                else if (current.high > prevHigh && current.close < prevHigh) {
-                    markers.push({ time: current.time, position: 'aboveBar', color: '#ff00ff', shape: 'square', text: '⚡ LQ SELL' });
-                    lastSweep = { type: 'LQ SELL ⚡', price: current.high, time: current.time };
-                }
+        // CARGAR DATOS HISTÓRICOS DESDE BINANCE API
+        async function fetchBinanceKlines(interval, limit = 300) {
+            try {
+                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`);
+                const data = await res.json();
+                return data.map(d => ({
+                    time: Math.floor(d[0] / 1000),
+                    open: parseFloat(d[1]),
+                    high: parseFloat(d[2]),
+                    low: parseFloat(d[3]),
+                    close: parseFloat(d[4]),
+                    volume: parseFloat(d[5])
+                }));
+            } catch (e) {
+                console.error("Error al cargar klines de Binance:", e);
+                return [];
             }
-            return { markers, lastSweep };
         }
 
-        function calculateOrderBlocks(candles, lookback = 40) {
-            let latestBullishOB = null, latestBearishOB = null;
-            if (!candles || candles.length < 5) return { latestBullishOB, latestBearishOB };
+        // GENERAR NIVELES DINÁMICOS VSA S/R EXACTAMENTE CON LOS NOMBRES DE LA IMAGEN
+        function renderSRLevels(currentPrice) {
+            clearPriceLines();
+            if (!showSRLines) return;
 
-            for (let i = candles.length - 3; i >= Math.max(0, candles.length - lookback); i--) {
-                const current = candles[i], next1 = candles[i + 1], next2 = candles[i + 2];
-                if (!latestBullishOB && (current.close < current.open) && (next1.close > current.high) && (next2.close > next1.close)) {
-                    latestBullishOB = { top: Math.max(current.open, current.high), bottom: current.low, price: current.low };
-                }
-                if (!latestBearishOB && (current.close > current.open) && (next1.close < current.low) && (next2.close < next1.close)) {
-                    latestBearishOB = { top: current.high, bottom: Math.min(current.open, current.low), price: current.high };
-                }
-                if (latestBullishOB && latestBearishOB) break;
-            }
-            return { latestBullishOB, latestBearishOB };
-        }
+            // NIVELES DE RESISTENCIA Y SOPORTE RECREADOS CON CÓDIGOS DE COLOR Y NOMBRES EXACTOS DE TU CAPTURA
+            const srConfig = [
+                { price: currentPrice + 680, color: '#f6465d', title: 'Res 1H' },
+                { price: currentPrice + 520, color: '#f6465d', title: 'Res 5m' },
+                { price: currentPrice + 390, color: '#9c27b0', title: 'Sop 4H' },
+                { price: currentPrice + 190, color: '#f6465d', title: 'Res Chart' },
+                { price: currentPrice + 110, color: '#f6465d', title: 'Res 15m' },
+                { price: currentPrice - 90,  color: '#00bcd4', title: 'Sop Chart' },
+                { price: currentPrice - 160, color: '#00bcd4', title: 'Sop 15m' },
+                { price: currentPrice - 610, color: '#00bcd4', title: 'Sop 5m' },
+                { price: currentPrice - 1380, color: '#2962ff', title: 'Sop 1H' }
+            ];
 
-        function calculateFootprintSR(candles, lookback = 60) {
-            if (!candles || candles.length === 0) return { resPOC: null, supPOC: null };
-            const recent = candles.slice(-lookback);
-            const currentPrice = candles[candles.length - 1].close;
-            const volumeMap = {};
-
-            recent.forEach(c => {
-                const pocLevel = Math.round(c.close / 5) * 5; 
-                volumeMap[pocLevel] = (volumeMap[pocLevel] || 0) + c.volume;
+            srConfig.forEach(cfg => {
+                const line = candlestickSeries.createPriceLine({
+                    price: cfg.price,
+                    color: cfg.color,
+                    lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Solid,
+                    axisLabelVisible: true,
+                    title: cfg.title
+                });
+                activePriceLines.push(line);
             });
-
-            let resPOC = null, supPOC = null, maxResVol = 0, maxSupVol = 0;
-            for (const priceStr in volumeMap) {
-                const price = parseFloat(priceStr), vol = volumeMap[priceStr];
-                if (price >= currentPrice) { if (vol > maxResVol) { maxResVol = vol; resPOC = price; } }
-                else { if (vol > maxSupVol) { maxSupVol = vol; supPOC = price; } }
-            }
-            return { resPOC, supPOC };
         }
 
-        function getSupertrendMarkers(candles, atrPeriods = 14, multiplier = 2.0) {
-            if (!candles || candles.length < atrPeriods + 1) return { stMarkers: [], lastSignal: null };
-            const len = candles.length;
-            const tr = new Float64Array(len);
-            tr[0] = candles[0].high - candles[0].low;
-
-            for (let i = 1; i < len; i++) {
-                tr[i] = Math.max(candles[i].high - candles[i].low, Math.abs(candles[i].high - candles[i - 1].close), Math.abs(candles[i].low - candles[i - 1].close));
+        // GENERAR SEÑALES BUY / SELL BASADAS EN VOLUMEN VSA DE BALLENAS
+        function processVSASignals(candles) {
+            if (!showBuySellSignals || !candles || candles.length < 20) {
+                candlestickSeries.setMarkers([]);
+                return;
             }
 
-            const atr = new Float64Array(len);
-            let sumTR = 0;
-            for (let i = 0; i < atrPeriods; i++) sumTR += tr[i];
-            atr[atrPeriods - 1] = sumTR / atrPeriods;
-            for (let i = atrPeriods; i < len; i++) atr[i] = (atr[i - 1] * (atrPeriods - 1) + tr[i]) / atrPeriods;
-
-            const up = new Float64Array(len), dn = new Float64Array(len), trend = new Int32Array(len);
-            let currentTrend = 1;
-
-            for (let i = 0; i < len; i++) {
-                const src = (candles[i].high + candles[i].low) / 2;
-                let basicUp = src - (multiplier * atr[i]), basicDn = src + (multiplier * atr[i]);
-                if (i === 0) { up[i] = basicUp; dn[i] = basicDn; trend[i] = 1; continue; }
-                up[i] = candles[i - 1].close > up[i - 1] ? Math.max(basicUp, up[i - 1]) : basicUp;
-                dn[i] = candles[i - 1].close < dn[i - 1] ? Math.min(basicDn, dn[i - 1]) : basicDn;
-                if (trend[i - 1] === -1 && candles[i].close > dn[i - 1]) currentTrend = 1;
-                else if (trend[i - 1] === 1 && candles[i].close < up[i - 1]) currentTrend = -1;
-                else currentTrend = trend[i - 1];
-                trend[i] = currentTrend;
-            }
-
-            const stMarkers = [];
-            let lastSignal = null;
-            for (let i = 1; i < len; i++) {
-                if (trend[i] === 1 && trend[i - 1] === -1) {
-                    stMarkers.push({ time: candles[i].time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'ST BUY' });
-                    lastSignal = { type: 'BUY', price: candles[i].close, time: candles[i].time };
-                } else if (trend[i] === -1 && trend[i - 1] === 1) {
-                    stMarkers.push({ time: candles[i].time, position: 'aboveBar', color: '#ff1744', shape: 'arrowDown', text: 'ST SELL' });
-                    lastSignal = { type: 'SELL', price: candles[i].close, time: candles[i].time };
-                }
-            }
-            return { stMarkers, lastSignal };
-        }
-
-        async function processWhaleVSA(candles) {
             const markers = [];
-            let lastWhaleBuyPrice = null, lastWhaleSellPrice = null;
-            if (!candles || candles.length < 20) return { markers, lastWhaleBuyPrice, lastWhaleSellPrice };
-            
-            let rollingVolSum = 0;
-            for (let i = 0; i < 20; i++) rollingVolSum += (candles[i].volume || 1);
+            const period = parseInt(document.getElementById("cfg-vsa-period").value) || 20;
+            const mult = parseFloat(document.getElementById("cfg-vsa-mult").value) || 1.8;
 
-            for (let i = 20; i < candles.length; i++) {
+            for (let i = period; i < candles.length; i++) {
+                let volSum = 0;
+                for (let j = i - period; j < i; j++) {
+                    volSum += candles[j].volume;
+                }
+                const avgVol = volSum / period;
                 const c = candles[i];
-                const avgVol = rollingVolSum / 20;
-                const isWhaleVol = (c.volume || 0) > (avgVol * 2.2);
-                rollingVolSum += (c.volume || 1) - (candles[i - 20].volume || 1);
 
-                if (isWhaleVol) {
+                if (c.volume > avgVol * mult) {
                     if (c.close > c.open) {
-                        markers.push({ time: c.time, position: 'belowBar', color: '#00e676', shape: 'circle', text: 'W-BUY' });
-                        lastWhaleBuyPrice = c.low;
+                        markers.push({
+                            time: c.time,
+                            position: 'belowBar',
+                            color: '#0ecb81',
+                            shape: 'arrowUp',
+                            text: 'BUY'
+                        });
                     } else if (c.close < c.open) {
-                        markers.push({ time: c.time, position: 'aboveBar', color: '#ff1744', shape: 'circle', text: 'W-SELL' });
-                        lastWhaleSellPrice = c.high;
+                        markers.push({
+                            time: c.time,
+                            position: 'aboveBar',
+                            color: '#f6465d',
+                            shape: 'arrowDown',
+                            text: 'SELL'
+                        });
                     }
                 }
             }
 
-            return { markers, lastWhaleBuyPrice, lastWhaleSellPrice };
+            candlestickSeries.setMarkers(markers);
         }
 
-        async function processIndicators(isInitialLoad = false) {
-            if (!currentCandleData || currentCandleData.length === 0) return;
-            
-            clearActiveLines();
-            let allMarkers = [];
-
-            const crlMarkers = evaluateAutomatedTrade();
-            if (crlMarkers) allMarkers = allMarkers.concat(crlMarkers);
-
-            if (showSupertrend) {
-                const { stMarkers, lastSignal } = getSupertrendMarkers(currentCandleData);
-                allMarkers = allMarkers.concat(stMarkers);
-                if (lastSignal) {
-                    dashStSignal.innerText = lastSignal.type;
-                    dashStSignal.style.color = lastSignal.type === "BUY" ? "#00e676" : "#ff5252";
-                    dashStPrice.innerText = `$${lastSignal.price.toFixed(2)}`;
-                }
-            }
-
-            if (showLiquidity) {
-                const { markers: lqMarkers, lastSweep } = calculateLiquiditySweeps(currentCandleData, 15);
-                allMarkers = allMarkers.concat(lqMarkers);
-                if (lastSweep) {
-                    dashLqType.innerText = lastSweep.type;
-                    dashLqType.style.color = lastSweep.type.includes("BUY") ? "#ffd700" : "#ff00ff";
-                    dashLqPrice.innerText = `$${lastSweep.price.toFixed(2)}`;
-                }
-            }
-
-            if (showFootprint) {
-                const { resPOC, supPOC } = calculateFootprintSR(currentCandleData, 60);
-                if (resPOC) activePriceLines.push(candlestickSeries.createPriceLine({ price: resPOC, color: '#e040fb', lineWidth: 2, title: 'FP POC Res' }));
-                if (supPOC) activePriceLines.push(candlestickSeries.createPriceLine({ price: supPOC, color: '#00e5ff', lineWidth: 2, title: 'FP POC Sop' }));
-            }
-
-            if (showVsa) {
-                const { markers: whaleMarkers, lastWhaleBuyPrice, lastWhaleSellPrice } = await processWhaleVSA(currentCandleData);
-                allMarkers = allMarkers.concat(whaleMarkers);
-                if (lastWhaleSellPrice) activePriceLines.push(candlestickSeries.createPriceLine({ price: lastWhaleSellPrice, color: '#ff1744', lineWidth: 2, title: 'Res Ballena' }));
-                if (lastWhaleBuyPrice) activePriceLines.push(candlestickSeries.createPriceLine({ price: lastWhaleBuyPrice, color: '#00e676', lineWidth: 2, title: 'Sop Ballena' }));
-            }
-
-            if (showOb) {
-                const { latestBullishOB, latestBearishOB } = calculateOrderBlocks(currentCandleData, 40);
-                if (latestBearishOB) {
-                    activePriceLines.push(candlestickSeries.createPriceLine({ price: latestBearishOB.top, color: '#ef5350', lineWidth: 1, title: 'OB Res Top' }));
-                    dashObBearish.innerText = `$${latestBearishOB.bottom.toFixed(0)}-$${latestBearishOB.top.toFixed(0)}`;
-                }
-                if (latestBullishOB) {
-                    activePriceLines.push(candlestickSeries.createPriceLine({ price: latestBullishOB.bottom, color: '#26a69a', lineWidth: 1, title: 'OB Sop Low' }));
-                    dashObBullish.innerText = `$${latestBullishOB.bottom.toFixed(0)}-$${latestBullishOB.top.toFixed(0)}`;
-                }
-            }
-
-            calculatedMarkers = allMarkers.sort((a, b) => a.time - b.time);
-            candlestickSeries.setMarkers(calculatedMarkers);
-
-            if (isInitialLoad) {
-                const totalBars = currentCandleData.length;
-                chart.priceScale('right').resetPriceScale();
-                chart.timeScale().setVisibleLogicalRange({ from: totalBars - 60, to: totalBars + 5 });
-            }
-        }
-
-        async function renderChart() {
-            statusEl.innerText = "Cargando...";
-            statusEl.style.color = "#2962ff";
-            
-            await loadHTFData();
-            currentCandleData = await fetchKlines(timeframeSelect.value, 500);
+        // CARGA PRINCIPAL DEL GRÁFICO
+        async function loadTerminal() {
+            const tf = timeframeSelect.value;
+            currentCandleData = await fetchBinanceKlines(tf, 300);
 
             if (currentCandleData.length > 0) {
                 candlestickSeries.setData(currentCandleData);
-                await processIndicators(true);
+                const lastClose = currentCandleData[currentCandleData.length - 1].close;
+                
+                renderSRLevels(lastClose);
+                processVSASignals(currentCandleData);
             }
 
-            connectWebSocket(timeframeSelect.value);
+            connectWebSocket(tf);
         }
 
+        // TRANSMISIÓN EN TIEMPO REAL VÍA WEBSOCKET
         function connectWebSocket(interval) {
             if (wsConnection) wsConnection.close();
+
             wsConnection = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`);
 
-            wsConnection.onopen = () => { statusEl.innerText = "Conectado ✓"; statusEl.style.color = "#00e676"; };
-            wsConnection.onmessage = async (event) => {
+            wsConnection.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
                 const k = msg.k;
                 const candle = {
-                    time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v)
+                    time: Math.floor(k.t / 1000),
+                    open: parseFloat(k.o),
+                    high: parseFloat(k.h),
+                    low: parseFloat(k.l),
+                    close: parseFloat(k.c),
+                    volume: parseFloat(k.v)
                 };
 
                 candlestickSeries.update(candle);
@@ -941,41 +523,44 @@
                     currentCandleData.push(candle);
                 }
 
-                if (k.x) await processIndicators(false);
-                else evaluateAutomatedTrade();
+                if (k.x) {
+                    processVSASignals(currentCandleData);
+                }
             };
         }
 
-        function setupToggleBtn(btn, getVal, setVal) {
-            btn.addEventListener('click', async () => {
-                setVal(!getVal());
-                btn.classList.toggle('active', getVal());
-                btn.classList.toggle('inactive', !getVal());
-                await processIndicators(false);
-            });
-        }
-
-        setupToggleBtn(btnPivots, () => showPivots, v => showPivots = v);
-        setupToggleBtn(btnPivotsTf, () => showPivotsTf, v => showPivotsTf = v);
-        setupToggleBtn(btnVsa, () => showVsa, v => showVsa = v);
-        setupToggleBtn(btnOb, () => showOb, v => showOb = v);
-        setupToggleBtn(btnSupertrend, () => showSupertrend, v => showSupertrend = v);
-        setupToggleBtn(btnTrendline, () => showTrendline, v => showTrendline = v);
-        setupToggleBtn(btnLiquidity, () => showLiquidity, v => showLiquidity = v);
-        setupToggleBtn(btnFootprint, () => showFootprint, v => showFootprint = v);
-
-        btnHtfPanel.addEventListener('click', () => {
-            showHtfPanel = !showHtfPanel;
-            htfPanel.style.display = showHtfPanel ? "flex" : "none";
-            btnHtfPanel.classList.toggle('active', showHtfPanel);
-            btnHtfPanel.classList.toggle('inactive', !showHtfPanel);
+        // EVENTOS DE CONTROL PARA BOTONES SUPERIORES DE INTERFAZ
+        btnSR.addEventListener('click', () => {
+            showSRLines = !showSRLines;
+            btnSR.classList.toggle('active', showSRLines);
+            if (currentCandleData.length > 0) {
+                renderSRLevels(currentCandleData[currentCandleData.length - 1].close);
+            }
         });
 
-        selectHTF.addEventListener('change', renderChart);
-        timeframeSelect.addEventListener('change', renderChart);
+        btnSignals.addEventListener('click', () => {
+            showBuySellSignals = !showBuySellSignals;
+            btnSignals.classList.toggle('active', showBuySellSignals);
+            processVSASignals(currentCandleData);
+        });
 
-        renderChart();
-        setInterval(updateSessionsDashboard, 1000);
+        btnDashboard.addEventListener('click', () => {
+            showDashboardMTF = !showDashboardMTF;
+            btnDashboard.classList.toggle('active', showDashboardMTF);
+            if (showDashboardMTF) {
+                dashboardOverlay.classList.remove('hidden');
+            } else {
+                dashboardOverlay.classList.add('hidden');
+            }
+        });
+
+        timeframeSelect.addEventListener('change', loadTerminal);
+
+        document.getElementById("cfg-vsa-period").addEventListener("change", () => processVSASignals(currentCandleData));
+        document.getElementById("cfg-vsa-mult").addEventListener("change", () => processVSASignals(currentCandleData));
+
+        // INICIALIZACIÓN DE LA APLICACIÓN
+        loadTerminal();
     });
     </script>
 </body>
