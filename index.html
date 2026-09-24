@@ -138,7 +138,12 @@
             min-width: 320px;
             backdrop-filter: blur(8px); 
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-            transition: all 0.2s ease;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        /* CLASE PARA OCULTAR ELEMENTOS */
+        .hidden {
+            display: none !important;
         }
 
         .dec-title { 
@@ -182,10 +187,6 @@
             backdrop-filter: blur(6px);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
             transition: opacity 0.2s ease, transform 0.2s ease;
-        }
-
-        .vsa-dashboard-overlay.hidden {
-            display: none !important;
         }
 
         /* TABLA MTF VSA */
@@ -297,6 +298,7 @@
         </div>
 
         <div class="controls-right">
+            <button id="btn-toggle-crl" class="btn-toggle active">Analizador CRL</button>
             <button id="btn-toggle-sr" class="btn-toggle active">S/R Ballenas VSA</button>
             <button id="btn-toggle-signals" class="btn-toggle active">Señales BUY/SELL</button>
             <button id="btn-toggle-dashboard" class="btn-toggle active">Dashboard MTF</button>
@@ -417,6 +419,7 @@
     <script>
     document.addEventListener("DOMContentLoaded", function () {
         // VARIABLES DE ESTADO Y VISIBILIDAD DE CAPAS
+        let showCRLDecision = true;
         let showSRLines = true;
         let showBuySellSignals = true;
         let showDashboardMTF = true;
@@ -440,6 +443,7 @@
         const txtAction = document.getElementById("dec-action");
         const txtReason = document.getElementById("dec-reason");
 
+        const btnCRL = document.getElementById("btn-toggle-crl");
         const btnSR = document.getElementById("btn-toggle-sr");
         const btnSignals = document.getElementById("btn-toggle-signals");
         const btnDashboard = document.getElementById("btn-toggle-dashboard");
@@ -723,6 +727,16 @@
         }
 
         // CONTROLES DE BOTONES Y SELECTORES
+        btnCRL.addEventListener('click', () => {
+            showCRLDecision = !showCRLDecision;
+            btnCRL.classList.toggle('active', showCRLDecision);
+            if (showCRLDecision) {
+                boxDecision.classList.remove('hidden');
+            } else {
+                boxDecision.classList.add('hidden');
+            }
+        });
+
         btnSR.addEventListener('click', () => {
             showSRLines = !showSRLines;
             btnSR.classList.toggle('active', showSRLines);
