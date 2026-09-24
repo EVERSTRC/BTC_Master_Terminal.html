@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - S/R VSA Ballenas & HTF System</title>
+    <title>Bitcoin Trading Terminal - S/R VSA Ballenas</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,7 +19,7 @@
             flex-direction: column; 
         }
 
-        /* BARRA SUPERIOR UNIFICADA */
+        /* BARRA SUPERIOR IDÉNTICA A TU CAPTURA */
         #top-bar { 
             display: flex; 
             align-items: center; 
@@ -32,7 +32,7 @@
             width: 100%;
         }
 
-        .controls-left { display: flex; align-items: center; gap: 12px; }
+        .controls-left { display: flex; align-items: center; gap: 10px; }
         .controls-right { display: flex; align-items: center; gap: 8px; }
 
         label { font-size: 12px; color: #848e9c; font-weight: 500; }
@@ -41,7 +41,7 @@
             background-color: #1e232d; 
             color: #d1d4dc; 
             border: 1px solid #2a2e39; 
-            padding: 5px 10px; 
+            padding: 4px 8px; 
             border-radius: 4px; 
             font-size: 12px; 
             outline: none;
@@ -52,7 +52,7 @@
             background-color: rgba(14, 203, 129, 0.15);
             color: #0ecb81;
             border: 1px solid rgba(14, 203, 129, 0.4);
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 4px;
             font-size: 11px;
             font-weight: 600;
@@ -61,12 +61,12 @@
             gap: 5px;
         }
 
-        /* BOTONES ESTILO TRADINGVIEW */
+        /* BOTONES ESTILO TRADINGVIEW IDÉNTICOS */
         .btn-toggle { 
             background-color: #2b313a; 
             color: #848e9c; 
             border: none; 
-            padding: 6px 14px; 
+            padding: 6px 12px; 
             border-radius: 4px; 
             font-size: 11px; 
             font-weight: 700;
@@ -80,52 +80,15 @@
             box-shadow: 0 0 8px rgba(41, 98, 255, 0.4);
         }
 
-        /* ÁREA DE TRABAJO PRINCIPAL */
-        #workspace { 
-            flex: 1; 
-            display: flex;
-            position: relative; 
-            width: 100%; 
-            height: calc(100vh - 48px); 
-            overflow: hidden;
-        }
-
-        /* PANEL IZQUIERDO: HTF */
-        #htf-draw-panel {
-            width: 220px; 
-            background-color: #161b22; 
-            border-right: 2px solid #30363d;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 15px 10px; 
-            position: relative; 
-            z-index: 5;
-            flex-shrink: 0;
-        }
-
-        .panel-title { 
-            font-size: 12px; 
-            font-weight: 700; 
-            color: #8b949e; 
-            text-transform: uppercase; 
-            margin-bottom: 10px; 
-        }
-
-        #htf-svg { 
-            width: 100%; 
-            height: 100%; 
-            overflow: visible; 
-        }
-
-        /* PANEL DERECHO: GRÁFICO PRINCIPAL */
+        /* ÁREA DE TRABAJO COMPLETA PARA EL GRÁFICO */
         #chart-container { 
             flex: 1; 
-            height: 100%; 
+            width: 100%;
+            height: calc(100vh - 48px); 
             position: relative;
         }
 
-        /* BANNER AUTOMÁTICO DE DECISIÓN CRL */
+        /* BANNER AUTOMÁTICO DE DECISIÓN CRL (OPCIONAL) */
         #auto-decision-box {
             position: absolute; 
             top: 16px; 
@@ -134,43 +97,24 @@
             background: rgba(18, 22, 31, 0.95); 
             border: 2px solid #30363d;
             border-radius: 8px; 
-            padding: 12px 18px; 
-            min-width: 320px;
+            padding: 10px 14px; 
+            min-width: 280px;
             backdrop-filter: blur(8px); 
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-            transition: opacity 0.2s ease, transform 0.2s ease;
+            transition: opacity 0.2s ease;
         }
 
-        /* CLASE PARA OCULTAR ELEMENTOS */
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
 
-        .dec-title { 
-            font-size: 11px; 
-            text-transform: uppercase; 
-            color: #8b949e; 
-            font-weight: 700; 
-            letter-spacing: 0.5px; 
-        }
-
-        .dec-action { 
-            font-size: 16px; 
-            font-weight: 800; 
-            margin: 4px 0; 
-        }
-
-        .dec-reason { 
-            font-size: 12px; 
-            color: #c9d1d9; 
-        }
+        .dec-title { font-size: 10px; text-transform: uppercase; color: #8b949e; font-weight: 700; letter-spacing: 0.5px; }
+        .dec-action { font-size: 14px; font-weight: 800; margin: 3px 0; }
+        .dec-reason { font-size: 11px; color: #c9d1d9; }
         
         .state-buy { color: #00e676; border-color: #00e676 !important; }
         .state-sell { color: #ff5252; border-color: #ff5252 !important; }
         .state-wait { color: #ffb300; border-color: #ffb300 !important; }
-        .state-no-trade { color: #8b949e; border-color: #8b949e !important; }
 
-        /* PANEL SOBREPUESTO MTF Y CONFIGURACIÓN VSA */
+        /* DASHBOARD VSA MTF FLOTANTE */
         #vsa-dashboard-overlay { 
             position: absolute;
             top: 16px;
@@ -186,110 +130,36 @@
             z-index: 10;
             backdrop-filter: blur(6px);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-            transition: opacity 0.2s ease, transform 0.2s ease;
         }
 
-        /* TABLA MTF VSA */
-        .vsa-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 11px; 
-        }
+        .vsa-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .vsa-table th { text-align: left; color: #2962ff; padding: 4px 2px; font-weight: 700; border-bottom: 1px solid #2a2e39; font-size: 10px; text-transform: uppercase; }
+        .vsa-table td { padding: 4px 2px; text-align: right; font-size: 11px; font-weight: 500; }
+        .vsa-table td:first-child { text-align: left; color: #ffffff; font-weight: 700; }
 
-        .vsa-table th { 
-            text-align: left; 
-            color: #2962ff; 
-            padding: 4px 2px; 
-            font-weight: 700; 
-            border-bottom: 1px solid #2a2e39; 
-            font-size: 10px;
-            text-transform: uppercase;
-        }
-
-        .vsa-table td { 
-            padding: 5px 2px; 
-            text-align: right; 
-            font-size: 11px;
-            font-weight: 500;
-        }
-
-        .vsa-table td:first-child { 
-            text-align: left; 
-            color: #ffffff;
-            font-weight: 700;
-        }
-
-        .badge-vsa { 
-            padding: 2px 6px; 
-            border-radius: 3px; 
-            font-size: 10px; 
-            font-weight: 800; 
-            display: inline-block; 
-            text-align: center; 
-            min-width: 42px;
-        }
-
+        .badge-vsa { padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 800; display: inline-block; text-align: center; min-width: 42px; }
         .badge-buy { background-color: #0ecb81; color: #000000; }
         .badge-sell { background-color: #f6465d; color: #ffffff; }
 
         .txt-buy { color: #0ecb81; }
         .txt-sell { color: #f6465d; }
 
-        /* PANEL DE CONFIGURACIÓN VSA */
-        .vsa-config-box {
-            background-color: #0b0e14;
-            border: 1px solid #1e232d;
-            border-radius: 4px;
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .vsa-config-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: #848e9c;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .vsa-config-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: #d1d4dc;
-        }
-
-        .vsa-config-row input {
-            width: 50px;
-            background-color: #1e232d;
-            border: 1px solid #2a2e39;
-            color: #ffffff;
-            text-align: right;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 11px;
-        }
+        .vsa-config-box { background-color: #0b0e14; border: 1px solid #1e232d; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+        .vsa-config-title { font-size: 10px; font-weight: 700; color: #848e9c; text-transform: uppercase; letter-spacing: 0.5px; }
+        .vsa-config-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #d1d4dc; }
+        .vsa-config-row input { width: 45px; background-color: #1e232d; border: 1px solid #2a2e39; color: #ffffff; text-align: right; padding: 2px 4px; border-radius: 3px; font-size: 11px; }
     </style>
 </head>
 <body>
 
-    <!-- BARRA SUPERIOR UNIFICADA CON TODOS LOS CONTROLES Y TÍTULOS -->
+    <!-- BARRA SUPERIOR EXACTA A TU CAPTURA -->
     <div id="top-bar">
         <div class="controls-left">
-            <span style="font-weight: 800; font-size: 15px; color: #fff; margin-right: 8px;">CRL :) Automated Trading Terminal</span>
-            <label for="tf-htf">HTF:</label>
-            <select id="tf-htf">
-                <option value="1h" selected>1 Hora</option>
-                <option value="4h">4 Horas</option>
-            </select>
-            <label for="timeframe">LTF:</label>
+            <label for="timeframe">TF:</label>
             <select id="timeframe">
                 <option value="1m">1 Minuto</option>
-                <option value="5m" selected>5 Minutos</option>
-                <option value="15m">15 Minutos</option>
+                <option value="5m">5 Minutos</option>
+                <option value="15m" selected>15 Minutos</option>
                 <option value="1h">1 Hora</option>
                 <option value="4h">4 Horas</option>
                 <option value="1d">1 Día</option>
@@ -305,112 +175,47 @@
         </div>
     </div>
 
-    <div id="workspace">
-        <!-- VELA HTF DIBUJADA (PANEL IZQUIERDO) -->
-        <div id="htf-draw-panel">
-            <div class="panel-title" id="htf-name-label">1 HOUR - HTF</div>
-            <svg id="htf-svg" viewBox="0 0 160 400">
-                <line id="htf-wick" x1="80" y1="40" x2="80" y2="360" stroke="#2962ff" stroke-width="3" />
-                <rect id="htf-body" x="40" y="100" width="80" height="180" fill="#2962ff" stroke="#2962ff" stroke-width="2" rx="3" />
-
-                <line x1="10" y1="40" x2="150" y2="40" stroke="#ff5252" stroke-width="1.5" stroke-dasharray="4,4" />
-                <text x="15" y="32" fill="#ff5252" font-size="11" font-weight="bold">BSL (High)</text>
-                <text id="txt-bsl" x="145" y="32" fill="#ff5252" font-size="10" text-anchor="end">0.00</text>
-
-                <line x1="10" y1="200" x2="150" y2="200" stroke="#ffb300" stroke-width="1.5" stroke-dasharray="2,2" />
-                <text x="15" y="192" fill="#ffb300" font-size="11" font-weight="bold">50% (EQ)</text>
-                <text id="txt-eq" x="145" y="192" fill="#ffb300" font-size="10" text-anchor="end">0.00</text>
-
-                <line x1="10" y1="360" x2="150" y2="360" stroke="#00e676" stroke-width="1.5" stroke-dasharray="4,4" />
-                <text x="15" y="352" fill="#00e676" font-size="11" font-weight="bold">SSL (Low)</text>
-                <text id="txt-ssl" x="145" y="352" fill="#00e676" font-size="10" text-anchor="end">0.00</text>
-            </svg>
+    <!-- CONTENEDOR DEL GRÁFICO -->
+    <div id="chart-container">
+        <!-- BANNER CRL -->
+        <div id="auto-decision-box" class="state-wait">
+            <div class="dec-title">ANALIZADOR AUTOMÁTICO CRL</div>
+            <div id="dec-action" class="dec-action">ANALIZANDO...</div>
+            <div id="dec-reason" class="dec-reason">Evaluando estructura del mercado.</div>
         </div>
 
-        <!-- CONTENEDOR DEL GRÁFICO PRINCIPAL -->
-        <div id="chart-container">
-            <!-- BANNER AUTOMÁTICO DE DECISIÓN CRL -->
-            <div id="auto-decision-box" class="state-wait">
-                <div class="dec-title">ANALIZADOR AUTOMÁTICO CRL</div>
-                <div id="dec-action" class="dec-action">ANALIZANDO MERCADO...</div>
-                <div id="dec-reason" class="dec-reason">Evaluando posición respecto a niveles HTF.</div>
-            </div>
+        <!-- PANEL VSA Y MTF -->
+        <div id="vsa-dashboard-overlay">
+            <table class="vsa-table">
+                <thead>
+                    <tr>
+                        <th>Timeframe</th>
+                        <th>Señal VSA</th>
+                        <th>Vol. Transado</th>
+                        <th>% Compra</th>
+                        <th>% Venta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>5 Minutos</td><td><span class="badge-vsa badge-buy">BUY</span></td><td>125.26</td><td class="txt-buy">100.0%</td><td class="txt-sell">0.0%</td></tr>
+                    <tr><td>15 Minutos</td><td><span class="badge-vsa badge-sell">SELL</span></td><td>19.27</td><td class="txt-buy">25.8%</td><td class="txt-sell">74.2%</td></tr>
+                    <tr><td>1 Hora</td><td><span class="badge-vsa badge-sell">SELL</span></td><td>2.18K</td><td class="txt-buy">18.3%</td><td class="txt-sell">81.7%</td></tr>
+                    <tr><td>4 Horas</td><td><span class="badge-vsa badge-sell">SELL</span></td><td>4.84K</td><td class="txt-buy">35.5%</td><td class="txt-sell">64.5%</td></tr>
+                    <tr><td>1 Diario</td><td><span class="badge-vsa badge-buy">BUY</span></td><td>22.15K</td><td class="txt-buy">23.8%</td><td class="txt-sell">76.2%</td></tr>
+                    <tr><td>1 Semana</td><td><span class="badge-vsa badge-buy">BUY</span></td><td>108.47K</td><td class="txt-buy">88.9%</td><td class="txt-sell">11.1%</td></tr>
+                    <tr><td>1 Mes</td><td><span class="badge-vsa badge-buy">BUY</span></td><td>11.96</td><td class="txt-buy">0.0%</td><td class="txt-sell">100.0%</td></tr>
+                </tbody>
+            </table>
 
-            <!-- PANEL FLOTANTE DE VSA Y MTF -->
-            <div id="vsa-dashboard-overlay">
-                <table class="vsa-table">
-                    <thead>
-                        <tr>
-                            <th>Timeframe</th>
-                            <th>Señal VSA</th>
-                            <th>Vol. Transado</th>
-                            <th>% Compra</th>
-                            <th>% Venta</th>
-                        </tr>
-                    </thead>
-                    <tbody id="vsa-mtf-tbody">
-                        <tr>
-                            <td>5 Minutos</td>
-                            <td><span class="badge-vsa badge-buy">BUY</span></td>
-                            <td>125.26</td>
-                            <td class="txt-buy">100.0%</td>
-                            <td class="txt-sell">0.0%</td>
-                        </tr>
-                        <tr>
-                            <td>15 Minutos</td>
-                            <td><span class="badge-vsa badge-sell">SELL</span></td>
-                            <td>19.27</td>
-                            <td class="txt-buy">25.8%</td>
-                            <td class="txt-sell">74.2%</td>
-                        </tr>
-                        <tr>
-                            <td>1 Hora</td>
-                            <td><span class="badge-vsa badge-sell">SELL</span></td>
-                            <td>2.18K</td>
-                            <td class="txt-buy">18.3%</td>
-                            <td class="txt-sell">81.7%</td>
-                        </tr>
-                        <tr>
-                            <td>4 Horas</td>
-                            <td><span class="badge-vsa badge-sell">SELL</span></td>
-                            <td>4.84K</td>
-                            <td class="txt-buy">35.5%</td>
-                            <td class="txt-sell">64.5%</td>
-                        </tr>
-                        <tr>
-                            <td>1 Diario</td>
-                            <td><span class="badge-vsa badge-buy">BUY</span></td>
-                            <td>22.15K</td>
-                            <td class="txt-buy">23.8%</td>
-                            <td class="txt-sell">76.2%</td>
-                        </tr>
-                        <tr>
-                            <td>1 Semana</td>
-                            <td><span class="badge-vsa badge-buy">BUY</span></td>
-                            <td>108.47K</td>
-                            <td class="txt-buy">88.9%</td>
-                            <td class="txt-sell">11.1%</td>
-                        </tr>
-                        <tr>
-                            <td>1 Mes</td>
-                            <td><span class="badge-vsa badge-buy">BUY</span></td>
-                            <td>11.96</td>
-                            <td class="txt-buy">0.0%</td>
-                            <td class="txt-sell">100.0%</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="vsa-config-box">
-                    <div class="vsa-config-title">Configuración VSA</div>
-                    <div class="vsa-config-row">
-                        <span>Período Prom. Vol:</span>
-                        <input type="number" id="cfg-vsa-period" value="20">
-                    </div>
-                    <div class="vsa-config-row">
-                        <span>Mult. Vol Ballena:</span>
-                        <input type="number" step="0.1" id="cfg-vsa-mult" value="1.8">
-                    </div>
+            <div class="vsa-config-box">
+                <div class="vsa-config-title">Configuración VSA</div>
+                <div class="vsa-config-row">
+                    <span>Período Prom. Vol:</span>
+                    <input type="number" id="cfg-vsa-period" value="20">
+                </div>
+                <div class="vsa-config-row">
+                    <span>Mult. Vol Ballena:</span>
+                    <input type="number" step="0.1" id="cfg-vsa-mult" value="1.8">
                 </div>
             </div>
         </div>
@@ -418,78 +223,39 @@
 
     <script>
     document.addEventListener("DOMContentLoaded", function () {
-        // VARIABLES DE ESTADO Y VISIBILIDAD DE CAPAS
         let showCRLDecision = true;
         let showSRLines = true;
         let showBuySellSignals = true;
         let showDashboardMTF = true;
 
         let activeSRLines = [];
-        let activeHTFLines = [];
         let currentCandleData = [];
         let wsConnection = null;
 
-        // VARIABLES DE NIVELES HTF
-        let currentHigh = 0, currentLow = 0, currentEQ = 0;
-
-        // ELEMENTOS DEL DOM
         const timeframeSelect = document.getElementById("timeframe");
-        const selectHTF = document.getElementById("tf-htf");
         const statusEl = document.getElementById("status");
         const chartContainer = document.getElementById("chart-container");
         const dashboardOverlay = document.getElementById("vsa-dashboard-overlay");
-
         const boxDecision = document.getElementById("auto-decision-box");
-        const txtAction = document.getElementById("dec-action");
-        const txtReason = document.getElementById("dec-reason");
 
         const btnCRL = document.getElementById("btn-toggle-crl");
         const btnSR = document.getElementById("btn-toggle-sr");
         const btnSignals = document.getElementById("btn-toggle-signals");
         const btnDashboard = document.getElementById("btn-toggle-dashboard");
 
-        // INICIALIZACIÓN DEL GRÁFICO TRADINGVIEW LIGHTWEIGHT CHARTS
         const chart = LightweightCharts.createChart(chartContainer, {
             width: chartContainer.clientWidth,
             height: chartContainer.clientHeight,
-            layout: { 
-                background: { type: 'solid', color: '#0b0e14' }, 
-                textColor: '#d1d4dc' 
-            },
-            grid: { 
-                vertLines: { color: 'rgba(30, 35, 45, 0.6)' }, 
-                horzLines: { color: 'rgba(30, 35, 45, 0.6)' } 
-            },
-            timeScale: { 
-                borderColor: '#1e232d', 
-                timeVisible: true, 
-                secondsVisible: false,
-                rightOffset: 5
-            },
-            rightPriceScale: { 
-                borderColor: '#1e232d',
-                autoScale: true,
-                alignLabels: true
-            }
+            layout: { background: { type: 'solid', color: '#0b0e14' }, textColor: '#d1d4dc' },
+            grid: { vertLines: { color: 'rgba(30, 35, 45, 0.6)' }, horzLines: { color: 'rgba(30, 35, 45, 0.6)' } },
+            timeScale: { borderColor: '#1e232d', timeVisible: true, secondsVisible: false, rightOffset: 5 },
+            rightPriceScale: { borderColor: '#1e232d', autoScale: true, alignLabels: true }
         });
 
         const candlestickSeries = chart.addSeries 
-            ? chart.addSeries(LightweightCharts.CandlestickSeries, { 
-                upColor: '#0ecb81', 
-                downColor: '#f6465d', 
-                borderVisible: false, 
-                wickUpColor: '#0ecb81', 
-                wickDownColor: '#f6465d' 
-              })
-            : chart.addCandlestickSeries({ 
-                upColor: '#0ecb81', 
-                downColor: '#f6465d', 
-                borderVisible: false, 
-                wickUpColor: '#0ecb81', 
-                wickDownColor: '#f6465d' 
-              });
+            ? chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#0ecb81', downColor: '#f6465d', borderVisible: false, wickUpColor: '#0ecb81', wickDownColor: '#f6465d' })
+            : chart.addCandlestickSeries({ upColor: '#0ecb81', downColor: '#f6465d', borderVisible: false, wickUpColor: '#0ecb81', wickDownColor: '#f6465d' });
 
-        // RESPONSIVIDAD AL CAMBIAR TAMAÑO DE VENTANA
         const resizeObserver = new ResizeObserver(entries => {
             if (!entries || entries.length === 0) return;
             const { width, height } = entries[0].contentRect;
@@ -497,14 +263,11 @@
         });
         resizeObserver.observe(chartContainer);
 
-        // FUNCIÓN DE FETCH HISTÓRICO CON FALLBACK DE ENDPOINTS
         async function fetchBinanceKlines(interval, limit = 300) {
             const endpoints = [
                 `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`,
-                `https://api1.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`,
-                `https://api3.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`
+                `https://api1.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`
             ];
-
             for (let url of endpoints) {
                 try {
                     const res = await fetch(url);
@@ -519,24 +282,15 @@
                             volume: parseFloat(d[5])
                         }));
                     }
-                } catch (e) {
-                    console.warn(`Error en ${url}, intentando endpoint de respaldo...`);
-                }
+                } catch (e) {}
             }
             return [];
         }
 
-        // LIMPIAR LÍNEAS DE SOPORTE Y RESISTENCIA VSA
-        function clearSRLines() {
-            activeSRLines.forEach(line => {
-                try { candlestickSeries.removePriceLine(line); } catch(e){}
-            });
-            activeSRLines = [];
-        }
-
-        // DIBUJAR NIVELES VSA BALLENAS
         function renderSRLevels(currentPrice) {
-            clearSRLines();
+            activeSRLines.forEach(line => { try { candlestickSeries.removePriceLine(line); } catch(e){} });
+            activeSRLines = [];
+
             if (!showSRLines) return;
 
             const srConfig = [
@@ -553,120 +307,38 @@
 
             srConfig.forEach(cfg => {
                 const line = candlestickSeries.createPriceLine({
-                    price: cfg.price,
-                    color: cfg.color,
-                    lineWidth: 2,
-                    lineStyle: LightweightCharts.LineStyle.Solid,
-                    axisLabelVisible: true,
-                    title: cfg.title
+                    price: cfg.price, color: cfg.color, lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: cfg.title
                 });
                 activeSRLines.push(line);
             });
         }
 
-        // CARGAR Y ACTUALIZAR VELA PREVIA HTF
-        async function loadHTFData() {
-            const htfVal = selectHTF.value;
-            document.getElementById('htf-name-label').innerText = `${htfVal.toUpperCase()} - HTF CANDLE`;
-
-            const htfData = await fetchBinanceKlines(htfVal, 5);
-            if (htfData.length < 2) return;
-
-            const candle = htfData[htfData.length - 2];
-            currentHigh = candle.high;
-            currentLow = candle.low;
-            currentEQ = currentLow + (currentHigh - currentLow) * 0.5;
-
-            document.getElementById('txt-bsl').innerText = `$${currentHigh.toFixed(1)}`;
-            document.getElementById('txt-eq').innerText = `$${currentEQ.toFixed(1)}`;
-            document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
-
-            activeHTFLines.forEach(line => {
-                try { candlestickSeries.removePriceLine(line); } catch(e){}
-            });
-            activeHTFLines = [];
-
-            activeHTFLines.push(candlestickSeries.createPriceLine({ price: currentHigh, color: '#ff5252', lineWidth: 2, lineStyle: 2, title: 'BSL' }));
-            activeHTFLines.push(candlestickSeries.createPriceLine({ price: currentEQ, color: '#ffb300', lineWidth: 1, lineStyle: 0, title: '50% EQ' }));
-            activeHTFLines.push(candlestickSeries.createPriceLine({ price: currentLow, color: '#00e676', lineWidth: 2, lineStyle: 2, title: 'SSL' }));
-        }
-
-        // EVALUAR VSA Y REGLAS DE DECISIÓN AUTOMÁTICA CRL
-        function processSignalsAndDecision() {
-            if (!currentCandleData || currentCandleData.length < 20) {
-                candlestickSeries.setMarkers([]);
-                return;
-            }
+        function processSignals() {
+            if (!currentCandleData || currentCandleData.length < 20) return;
 
             const markers = [];
-
-            // 1. EVALUAR BANNER DE DECISIÓN AUTOMÁTICA CRL
-            if (currentHigh && currentLow) {
-                const lastBar = currentCandleData[currentCandleData.length - 1];
-
-                if (lastBar.low < currentLow && lastBar.close > currentLow) {
-                    boxDecision.className = "state-buy";
-                    txtAction.innerText = "🚀 ENTRAR EN COMPRA (LONG)";
-                    txtReason.innerText = `Barrido de SSL detectado. Stop Loss: $${lastBar.low.toFixed(1)} | TP: $${currentEQ.toFixed(1)}`;
-                    markers.push({ time: lastBar.time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'COMPRA (SSL Sweep)' });
-                }
-                else if (lastBar.high > currentHigh && lastBar.close < currentHigh) {
-                    boxDecision.className = "state-sell";
-                    txtAction.innerText = "🐻 ENTRAR EN VENTA (SHORT)";
-                    txtReason.innerText = `Barrido de BSL detectado. Stop Loss: $${lastBar.high.toFixed(1)} | TP: $${currentEQ.toFixed(1)}`;
-                    markers.push({ time: lastBar.time, position: 'aboveBar', color: '#ff5252', shape: 'arrowDown', text: 'VENTA (BSL Sweep)' });
-                }
-                else if (lastBar.close > currentHigh || lastBar.close < currentLow) {
-                    boxDecision.className = "state-no-trade";
-                    txtAction.innerText = "⛔ NO OPERAR (BREAKOUT DETECTADO)";
-                    txtReason.innerText = "El precio rompió el rango con cuerpo sólido. Entrada invalidada.";
-                }
-                else {
-                    boxDecision.className = "state-wait";
-                    txtAction.innerText = "⏳ ESPERAR OPORTUNIDAD";
-                    txtReason.innerText = "El precio está en zona neutra. Esperando barrido en BSL o SSL.";
-                }
-            }
-
-            // 2. PROCESAR SEÑALES VSA DE BALLENAS (SI ESTÁN ACTIVADAS)
             if (showBuySellSignals) {
                 const period = parseInt(document.getElementById("cfg-vsa-period").value) || 20;
                 const mult = parseFloat(document.getElementById("cfg-vsa-mult").value) || 1.8;
 
                 for (let i = period; i < currentCandleData.length; i++) {
                     let volSum = 0;
-                    for (let j = i - period; j < i; j++) {
-                        volSum += currentCandleData[j].volume;
-                    }
+                    for (let j = i - period; j < i; j++) volSum += currentCandleData[j].volume;
                     const avgVol = volSum / period;
                     const c = currentCandleData[i];
 
                     if (c.volume > avgVol * mult) {
                         if (c.close > c.open) {
-                            markers.push({
-                                time: c.time,
-                                position: 'belowBar',
-                                color: '#0ecb81',
-                                shape: 'arrowUp',
-                                text: 'BUY VSA'
-                            });
+                            markers.push({ time: c.time, position: 'belowBar', color: '#0ecb81', shape: 'arrowUp', text: 'BUY' });
                         } else if (c.close < c.open) {
-                            markers.push({
-                                time: c.time,
-                                position: 'aboveBar',
-                                color: '#f6465d',
-                                shape: 'arrowDown',
-                                text: 'SELL VSA'
-                            });
+                            markers.push({ time: c.time, position: 'aboveBar', color: '#f6465d', shape: 'arrowDown', text: 'SELL' });
                         }
                     }
                 }
             }
-
             candlestickSeries.setMarkers(markers);
         }
 
-        // CARGA PRINCIPAL DEL GRÁFICO LTF
         async function loadTerminal() {
             statusEl.innerText = "Cargando...";
             statusEl.style.color = "#ffd700";
@@ -676,108 +348,65 @@
 
             if (currentCandleData.length > 0) {
                 candlestickSeries.setData(currentCandleData);
-                const lastClose = currentCandleData[currentCandleData.length - 1].close;
-                
-                renderSRLevels(lastClose);
-                processSignalsAndDecision();
+                renderSRLevels(currentCandleData[currentCandleData.length - 1].close);
+                processSignals();
             }
 
             connectWebSocket(tf);
         }
 
-        // WEBSOCKET TIEMPO REAL
         function connectWebSocket(interval) {
             if (wsConnection) wsConnection.close();
-
             wsConnection = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`);
 
-            wsConnection.onopen = () => {
-                statusEl.innerText = "Conectado ✓";
-                statusEl.style.color = "#0ecb81";
-            };
-
-            wsConnection.onerror = () => {
-                statusEl.innerText = "Error WS";
-                statusEl.style.color = "#f6465d";
-            };
-
+            wsConnection.onopen = () => { statusEl.innerText = "Conectado ✓"; statusEl.style.color = "#0ecb81"; };
+            wsConnection.onerror = () => { statusEl.innerText = "Error WS"; statusEl.style.color = "#f6465d"; };
             wsConnection.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
                 const k = msg.k;
                 const candle = {
-                    time: Math.floor(k.t / 1000),
-                    open: parseFloat(k.o),
-                    high: parseFloat(k.h),
-                    low: parseFloat(k.l),
-                    close: parseFloat(k.c),
-                    volume: parseFloat(k.v)
+                    time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v)
                 };
-
                 candlestickSeries.update(candle);
 
                 const lastIdx = currentCandleData.length - 1;
-                if (lastIdx >= 0 && currentCandleData[lastIdx].time === candle.time) {
-                    currentCandleData[lastIdx] = candle;
-                } else {
-                    currentCandleData.push(candle);
-                }
+                if (lastIdx >= 0 && currentCandleData[lastIdx].time === candle.time) currentCandleData[lastIdx] = candle;
+                else currentCandleData.push(candle);
 
-                processSignalsAndDecision();
+                processSignals();
             };
         }
 
-        // CONTROLES DE BOTONES Y SELECTORES
+        // CONTROL DE BOTONES Y PANELES
         btnCRL.addEventListener('click', () => {
             showCRLDecision = !showCRLDecision;
             btnCRL.classList.toggle('active', showCRLDecision);
-            if (showCRLDecision) {
-                boxDecision.classList.remove('hidden');
-            } else {
-                boxDecision.classList.add('hidden');
-            }
+            boxDecision.classList.toggle('hidden', !showCRLDecision);
         });
 
         btnSR.addEventListener('click', () => {
             showSRLines = !showSRLines;
             btnSR.classList.toggle('active', showSRLines);
-            if (currentCandleData.length > 0) {
-                renderSRLevels(currentCandleData[currentCandleData.length - 1].close);
-            }
+            if (currentCandleData.length > 0) renderSRLevels(currentCandleData[currentCandleData.length - 1].close);
         });
 
         btnSignals.addEventListener('click', () => {
             showBuySellSignals = !showBuySellSignals;
             btnSignals.classList.toggle('active', showBuySellSignals);
-            processSignalsAndDecision();
+            processSignals();
         });
 
         btnDashboard.addEventListener('click', () => {
             showDashboardMTF = !showDashboardMTF;
             btnDashboard.classList.toggle('active', showDashboardMTF);
-            if (showDashboardMTF) {
-                dashboardOverlay.classList.remove('hidden');
-            } else {
-                dashboardOverlay.classList.add('hidden');
-            }
+            dashboardOverlay.classList.toggle('hidden', !showDashboardMTF);
         });
 
         timeframeSelect.addEventListener('change', loadTerminal);
-        
-        selectHTF.addEventListener('change', async () => {
-            await loadHTFData();
-            processSignalsAndDecision();
-        });
+        document.getElementById("cfg-vsa-period").addEventListener("change", () => processSignals());
+        document.getElementById("cfg-vsa-mult").addEventListener("change", () => processSignals());
 
-        document.getElementById("cfg-vsa-period").addEventListener("change", () => processSignalsAndDecision());
-        document.getElementById("cfg-vsa-mult").addEventListener("change", () => processSignalsAndDecision());
-
-        // INICIALIZACIÓN
-        async function initApp() {
-            await loadHTFData();
-            await loadTerminal();
-        }
-
-        initApp();
+        loadTerminal();
     });
     </script>
 </body>
