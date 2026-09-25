@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - Con Supertrend VSA</title>
+    <title>Bitcoin Trading Terminal - Señales Supertrend & VSA</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -154,7 +154,7 @@
         </div>
 
         <div class="controls-group">
-            <button id="toggle-supertrend" class="active">Supertrend</button>
+            <button id="toggle-supertrend" class="active">Señales Supertrend</button>
             <button id="toggle-vsa" class="active">S/R Ballenas VSA</button>
         </div>
     </div>
@@ -220,10 +220,6 @@
             upColor: '#238636', downColor: '#da3633', borderVisible: false, wickUpColor: '#238636', wickDownColor: '#da3633'
         });
 
-        const supertrendSeries = chart.addLineSeries({
-            lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid
-        });
-
         function resizeCanvas() {
             overlay.width = chartContainer.clientWidth;
             overlay.height = chartContainer.clientHeight;
@@ -239,9 +235,9 @@
         resizeObserver.observe(chartContainer);
         chart.timeScale().subscribeVisibleLogicalRangeChange(() => drawOverlay());
 
-        // Algoritmo Supertrend (Periodo: 10, Multiplicador: 3.0)
+        // Algoritmo Supertrend (Solo calcula las señales)
         function calculateSupertrend(data, period = 10, multiplier = 3.0) {
-            if (!data || data.length < period) return { lineData: [], signals: [] };
+            if (!data || data.length < period) return { signals: [] };
 
             let tr = [];
             for (let i = 0; i < data.length; i++) {
@@ -267,9 +263,8 @@
             let upperBand = new Array(data.length).fill(0);
             let lowerBand = new Array(data.length).fill(0);
             let superTrend = new Array(data.length).fill(0);
-            let trend = new Array(data.length).fill(1); // 1 = Alcista, -1 = Bajista
+            let trend = new Array(data.length).fill(1);
 
-            let lineData = [];
             let signals = [];
 
             for (let i = period - 1; i < data.length; i++) {
@@ -294,7 +289,6 @@
 
                     superTrend[i] = trend[i] === 1 ? lowerBand[i] : upperBand[i];
 
-                    // Detección de cambio de dirección
                     if (trend[i] !== trend[i - 1]) {
                         signals.push({
                             time: data[i].time,
@@ -303,15 +297,9 @@
                         });
                     }
                 }
-
-                lineData.push({
-                    time: data[i].time,
-                    value: superTrend[i],
-                    color: trend[i] === 1 ? '#2ea043' : '#f85149'
-                });
             }
 
-            return { lineData, signals, currentTrend: trend[trend.length - 1], lastValue: superTrend[superTrend.length - 1] };
+            return { signals, currentTrend: trend[trend.length - 1], lastValue: superTrend[superTrend.length - 1] };
         }
 
         // VSA Analysis
@@ -396,10 +384,9 @@
             vsaLinesToDraw = [];
             let allMarkers = [];
 
-            // 1. Supertrend
+            // 1. Supertrend (Solo marcadores/señales)
             if (showSupertrend) {
                 const st = calculateSupertrend(currentCandleData, 10, 3.0);
-                supertrendSeries.setData(st.lineData);
 
                 st.signals.forEach(sig => {
                     allMarkers.push({
@@ -414,8 +401,6 @@
                 document.getElementById("dash-st-signal").innerText = st.currentTrend === 1 ? "ALCISTA 🚀" : "BAJISTA 🐻";
                 document.getElementById("dash-st-signal").style.color = st.currentTrend === 1 ? "#3fb950" : "#f85149";
                 document.getElementById("dash-st-price").innerText = `$${st.lastValue ? st.lastValue.toFixed(2) : '--'}`;
-            } else {
-                supertrendSeries.setData([]);
             }
 
             // 2. VSA
