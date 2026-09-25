@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - Unificado Exacto</title>
+    <title>Bitcoin Trading Terminal - Multi-TF VSA, Order Blocks & Liquidity</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,563 +12,530 @@
             width: 100vw; 
             height: 100vh; 
             overflow: hidden; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background-color: #0b0e14; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif; 
+            background-color: #0d1117; 
             color: #d1d4dc; 
             display: flex; 
             flex-direction: column; 
         }
 
-        /* BARRA SUPERIOR */
         #top-bar { 
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
-            padding: 6px 16px; 
-            background-color: #12161f; 
-            border-bottom: 1px solid #1e232d; 
+            padding: 4px 12px; 
+            background-color: #161b22; 
+            border-bottom: 1px solid #21262d; 
             flex-shrink: 0; 
-            height: 48px;
+            min-height: 42px;
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .controls-group { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+        label { font-size: 11px; color: #8b949e; }
+        select, button, input { 
+            background-color: #21262d; 
+            color: #c9d1d9; 
+            border: 1px solid #30363d; 
+            padding: 3px 7px; 
+            border-radius: 4px; 
+            font-size: 11px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            white-space: nowrap;
+        }
+        select:hover, button:hover { background-color: #30363d; }
+        button.active { background-color: #238636; color: #ffffff; border-color: #2ea043; }
+        button.inactive { opacity: 0.5; }
+        #status { font-size: 11px; color: #58a6ff; font-weight: bold; }
+
+        #main-container { 
+            display: flex; 
+            flex: 1; 
+            position: relative; 
+            overflow: hidden; 
+            width: 100%; 
+            height: calc(100vh - 42px); 
+        }
+
+        #chart-wrapper {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        #chart { width: 100%; height: 100%; }
+
+        #labels-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #dashboard { 
+            width: 260px; 
+            min-width: 260px;
+            height: 100%;
+            background-color: #161b22; 
+            border-left: 1px solid #21262d; 
+            padding: 8px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 6px; 
+            overflow-y: auto; 
+            flex-shrink: 0; 
+        }
+
+        #dashboard::-webkit-scrollbar { width: 4px; }
+        #dashboard::-webkit-scrollbar-track { background: #0d1117; }
+        #dashboard::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+
+        .dash-module { 
+            background-color: #0d1117; 
+            border-radius: 6px; 
+            padding: 6px 8px; 
+            border: 1px solid #21262d; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 3px; 
+            flex-shrink: 0;
             width: 100%;
         }
-
-        .controls-left { display: flex; align-items: center; gap: 10px; }
-        .controls-right { display: flex; align-items: center; gap: 8px; }
-
-        label { font-size: 11px; color: #848e9c; font-weight: 600; }
-        
-        select { 
-            background-color: #1e232d; 
-            color: #d1d4dc; 
-            border: 1px solid #2a2e39; 
-            padding: 4px 8px; 
-            border-radius: 4px; 
-            font-size: 12px; 
-            outline: none;
-            cursor: pointer; 
-        }
-
-        .status-badge {
-            background-color: rgba(14, 203, 129, 0.15);
-            color: #0ecb81;
-            border: 1px solid rgba(14, 203, 129, 0.4);
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-        }
-
-        .btn-toggle { 
-            background-color: #2b313a; 
-            color: #848e9c; 
-            border: none; 
-            padding: 6px 12px; 
-            border-radius: 4px; 
-            font-size: 11px; 
-            font-weight: 700;
-            cursor: pointer; 
-            transition: all 0.2s ease;
-        }
-        
-        .btn-toggle.active { 
-            background-color: #2962ff; 
-            color: #ffffff; 
-            box-shadow: 0 0 8px rgba(41, 98, 255, 0.4);
-        }
-
-        /* WORKSPACE */
-        #workspace { 
-            flex: 1; 
-            display: flex;
-            position: relative; 
-            width: 100%; 
-            height: calc(100vh - 48px); 
-            overflow: hidden;
-        }
-
-        /* PANEL HTF CANDLE */
-        #htf-draw-panel {
-            width: 200px; 
-            background-color: #12161f; 
-            border-right: 1px solid #1e232d;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 15px 10px; 
-            position: relative; 
-            z-index: 5;
-            flex-shrink: 0;
-            transition: all 0.2s ease;
-        }
-
-        .panel-title { 
-            font-size: 11px; 
-            font-weight: 700; 
+        .dash-module h4 { 
+            font-size: 10px; 
             color: #8b949e; 
             text-transform: uppercase; 
-            margin-bottom: 10px; 
+            letter-spacing: 0.5px; 
+            margin-bottom: 2px;
         }
-
-        #htf-svg { width: 100%; height: 100%; overflow: visible; }
-
-        /* ÁREA DEL GRÁFICO */
-        #chart-container { 
-            flex: 1; 
-            height: 100%; 
-            position: relative;
-        }
-
-        /* BANNER AUTOMÁTICO DE DECISIÓN CRL */
-        #auto-decision-box {
-            position: absolute; 
-            top: 16px; 
-            left: 16px; 
-            z-index: 10;
-            background: rgba(18, 22, 31, 0.95); 
-            border: 2px solid #30363d;
-            border-radius: 8px; 
-            padding: 10px 14px; 
-            min-width: 280px;
-            backdrop-filter: blur(8px); 
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-        }
-
-        .hidden { display: none !important; }
-
-        .dec-title { font-size: 10px; text-transform: uppercase; color: #8b949e; font-weight: 700; letter-spacing: 0.5px; }
-        .dec-action { font-size: 14px; font-weight: 800; margin: 3px 0; }
-        .dec-reason { font-size: 11px; color: #c9d1d9; }
-        
-        .state-buy { color: #00e676; border-color: #00e676 !important; }
-        .state-sell { color: #ff5252; border-color: #ff5252 !important; }
-        .state-wait { color: #ffb300; border-color: #ffb300 !important; }
-
-        /* DASHBOARD MTF FLOTANTE */
-        #vsa-dashboard-overlay { 
-            position: absolute;
-            top: 16px;
-            right: 90px;
-            width: 285px;
-            background-color: rgba(18, 22, 31, 0.95); 
-            border: 1px solid #2a2e39; 
-            border-radius: 6px; 
-            padding: 10px; 
+        .dash-row { 
             display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
-            z-index: 10;
-            backdrop-filter: blur(6px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+            justify-content: space-between; 
+            font-size: 10px; 
+            align-items: center; 
+            gap: 4px;
         }
+        .dash-val { font-weight: bold; text-align: right; }
 
-        .vsa-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .vsa-table th { text-align: left; color: #2962ff; padding: 4px 2px; font-weight: 700; border-bottom: 1px solid #2a2e39; font-size: 10px; text-transform: uppercase; }
-        .vsa-table td { padding: 4px 2px; text-align: right; font-size: 11px; font-weight: 500; }
-        .vsa-table td:first-child { text-align: left; color: #ffffff; font-weight: 700; }
+        .vsa-table { width: 100%; border-collapse: collapse; font-size: 9px; margin-top: 2px; }
+        .vsa-table th { text-align: left; color: #8b949e; padding: 2px 0; font-weight: normal; border-bottom: 1px solid #21262d; }
+        .vsa-table td { padding: 2px 0; text-align: right; }
+        .vsa-table td:first-child { text-align: left; font-weight: bold; }
+        
+        #timer-progress-container { width: 100%; height: 3px; background-color: #21262d; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+        #timer-progress { height: 100%; width: 0%; background-color: #58a6ff; transition: width 1s linear; }
+        
+        .badge-buy { background-color: rgba(46, 160, 67, 0.2); color: #3fb950; border: 1px solid #2ea043; padding: 1px 3px; border-radius: 2px; font-size: 8px; font-weight: bold; }
+        .badge-sell { background-color: rgba(248, 81, 73, 0.2); color: #f85149; border: 1px solid #f85149; padding: 1px 3px; border-radius: 2px; font-size: 8px; font-weight: bold; }
+        .badge-neu { background-color: rgba(139, 148, 158, 0.2); color: #8b949e; border: 1px solid #8b949e; padding: 1px 3px; border-radius: 2px; font-size: 8px; font-weight: bold; }
+        
+        .txt-buy { color: #3fb950; font-weight: bold; }
+        .txt-sell { color: #f85149; font-weight: bold; }
+        
+        .trend-bar-bg { width: 100%; height: 5px; background-color: #21262d; border-radius: 3px; overflow: hidden; margin: 2px 0; }
+        .trend-bar-fill { height: 100%; width: 50%; background-color: #8b949e; transition: all 0.5s ease; }
+        
+        .session-badge { padding: 1px 4px; border-radius: 3px; font-size: 8px; font-weight: bold; }
+        .session-active { background-color: rgba(46, 160, 67, 0.2); color: #3fb950; border: 1px solid #2ea043; }
+        .session-closed { background-color: rgba(139, 148, 158, 0.1); color: #484f58; border: 1px solid #21262d; }
 
-        .badge-vsa { padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 800; display: inline-block; text-align: center; min-width: 42px; }
-        .badge-buy { background-color: #0ecb81; color: #000000; }
-        .badge-sell { background-color: #f6465d; color: #ffffff; }
-
-        .txt-buy { color: #0ecb81; }
-        .txt-sell { color: #f6465d; }
-
-        .vsa-config-box { background-color: #0b0e14; border: 1px solid #1e232d; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-        .vsa-config-title { font-size: 10px; font-weight: 700; color: #848e9c; text-transform: uppercase; }
-        .vsa-config-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #d1d4dc; }
-        .vsa-config-row input { width: 45px; background-color: #1e232d; border: 1px solid #2a2e39; color: #ffffff; text-align: right; padding: 2px 4px; border-radius: 3px; font-size: 11px; }
+        .news-item { display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 2px 0; border-bottom: 1px solid #21262d; }
+        .news-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 4px; }
+        .news-impact { padding: 1px 3px; border-radius: 2px; font-weight: bold; font-size: 7px; background-color: rgba(248, 81, 73, 0.2); color: #f85149; border: 1px solid #f85149; margin-right: 4px; }
+        .news-warning { background-color: rgba(248, 81, 73, 0.15); border: 1px solid #f85149; color: #f85149; font-size: 9px; padding: 3px; text-align: center; font-weight: bold; border-radius: 3px; display: none; }
     </style>
 </head>
 <body>
 
     <div id="top-bar">
-        <div class="controls-left">
-            <span style="font-weight: 800; font-size: 13px; color: #fff; margin-right: 4px;">CRL :)</span>
-            <div id="status" class="status-badge">Conectando...</div>
-            <label for="tf-htf" style="margin-left: 8px;">HTF:</label>
-            <select id="tf-htf">
-                <option value="1h" selected>1 Hora</option>
-                <option value="4h">4 Horas</option>
-            </select>
-            <label for="timeframe">LTF:</label>
+        <div class="controls-group">
+            <label for="timeframe">TF:</label>
             <select id="timeframe">
-                <option value="1m">1 Minuto</option>
-                <option value="5m">5 Minutos</option>
-                <option value="15m" selected>15 Minutos</option>
-                <option value="1h">1 Hora</option>
-                <option value="4h">4 Horas</option>
-                <option value="1d">1 Día</option>
+                <option value="1m">1 Min</option>
+                <option value="5m">5 Min</option>
+                <option value="15m" selected>15 Min</option>
+                <option value="1h">1 Hour</option>
+                <option value="4h">4 Hours</option>
+                <option value="1d">1 Day</option>
             </select>
+            <div id="status">Conectando...</div>
         </div>
 
-        <div class="controls-right">
-            <button id="btn-toggle-crl" class="btn-toggle active">Analizador CRL</button>
-            <button id="btn-toggle-sr" class="btn-toggle active">S/R Ballenas VSA</button>
-            <button id="btn-toggle-signals" class="btn-toggle active">Señales BUY/SELL</button>
-            <button id="btn-toggle-dashboard" class="btn-toggle active">Dashboard MTF</button>
+        <div class="controls-group">
+            <button id="toggle-supertrend" class="active">Supertrend</button>
+            <button id="toggle-trendline" class="active">Tendencia</button>
+            <button id="toggle-liquidity" class="active">Liquidez SMC</button>
+            <button id="toggle-vsa" class="active">S/R Ballenas VSA</button>
+            <button id="toggle-ob" class="active">Order Blocks</button>
+            <button id="toggle-pivots-tf" class="active">Pivots MTF</button>
+            <button id="toggle-news" class="active">Eventos USD</button>
         </div>
     </div>
 
-    <div id="workspace">
-        <div id="htf-draw-panel">
-            <div class="panel-title" id="htf-name-label">1H - HTF CANDLE</div>
-            <svg id="htf-svg" viewBox="0 0 160 400">
-                <line id="htf-wick" x1="80" y1="40" x2="80" y2="360" stroke="#2962ff" stroke-width="3" />
-                <rect id="htf-body" x="40" y="100" width="80" height="180" fill="#2962ff" stroke="#2962ff" stroke-width="2" rx="3" />
-
-                <line x1="10" y1="40" x2="150" y2="40" stroke="#ff5252" stroke-width="1.5" stroke-dasharray="4,4" />
-                <text x="15" y="32" fill="#ff5252" font-size="11" font-weight="bold">BSL (High)</text>
-                <text id="txt-bsl" x="145" y="32" fill="#ff5252" font-size="10" text-anchor="end">0.00</text>
-
-                <line x1="10" y1="200" x2="150" y2="200" stroke="#ffb300" stroke-width="1.5" stroke-dasharray="2,2" />
-                <text x="15" y="192" fill="#ffb300" font-size="11" font-weight="bold">50% (EQ)</text>
-                <text id="txt-eq" x="145" y="192" fill="#ffb300" font-size="10" text-anchor="end">0.00</text>
-
-                <line x1="10" y1="360" x2="150" y2="360" stroke="#00e676" stroke-width="1.5" stroke-dasharray="4,4" />
-                <text x="15" y="352" fill="#00e676" font-size="11" font-weight="bold">SSL (Low)</text>
-                <text id="txt-ssl" x="145" y="352" fill="#00e676" font-size="10" text-anchor="end">0.00</text>
-            </svg>
+    <div id="main-container">
+        <div id="chart-wrapper">
+            <div id="chart"></div>
+            <canvas id="labels-overlay"></canvas>
         </div>
 
-        <div id="chart-container">
-            <div id="auto-decision-box" class="state-wait">
-                <div class="dec-title">ANALIZADOR AUTOMÁTICO CRL</div>
-                <div id="dec-action" class="dec-action">ANALIZANDO...</div>
-                <div id="dec-reason" class="dec-reason">Evaluando posición respecto a niveles HTF.</div>
+        <div id="dashboard">
+            <div class="dash-module">
+                <h4>Vela Actual</h4>
+                <div class="dash-row">
+                    <span>Cierre en:</span>
+                    <span id="timer-display" class="dash-val">00:00</span>
+                </div>
+                <div id="timer-progress-container">
+                    <div id="timer-progress"></div>
+                </div>
             </div>
 
-            <div id="vsa-dashboard-overlay">
+            <div id="dash-module-news" class="dash-module" style="border-color: #f85149;">
+                <h4>Macro Eventos USD (CR)</h4>
+                <div id="news-alert-banner" class="news-warning">⚠️ NOTICIA EN BREVE</div>
+                <div id="news-list-container">
+                    <div style="font-size: 9px; color: #8b949e;">Cargando eventos...</div>
+                </div>
+            </div>
+
+            <div id="dash-module-sessions" class="dash-module">
+                <h4>Sesión de Mercado (CR)</h4>
+                <div class="dash-row">
+                    <span>Estado:</span>
+                    <span id="dash-active-session-text" class="dash-val" style="color: #3fb950;">--</span>
+                </div>
+                <div class="dash-row"><span>Tokio:</span><span id="sess-badge-tokyo" class="session-badge session-closed">CERRADO</span></div>
+                <div class="dash-row"><span>Londres:</span><span id="sess-badge-london" class="session-badge session-closed">CERRADO</span></div>
+                <div class="dash-row"><span>Nueva York:</span><span id="sess-badge-ny" class="session-badge session-closed">CERRADO</span></div>
+            </div>
+
+            <div id="dash-module-global-trend" class="dash-module" style="border-color: #58a6ff;">
+                <h4>Tendencia Confluencia</h4>
+                <div class="dash-row"><span>Tendencia TF:</span><span id="dash-trend-tf" class="dash-val">--</span></div>
+                <div class="trend-bar-bg"><div id="trend-bar-tf" class="trend-bar-fill"></div></div>
+                <div class="dash-row" style="margin-top: 3px;"><span>Tendencia 1D:</span><span id="dash-trend-day" class="dash-val">--</span></div>
+                <div class="trend-bar-bg"><div id="trend-bar-day" class="trend-bar-fill"></div></div>
+                <div class="dash-row" style="margin-top: 2px;">
+                    <span>Fuerza:</span>
+                    <span id="dash-trend-score" class="dash-val">0%</span>
+                </div>
+            </div>
+
+            <div id="dash-module-vsa" class="dash-module">
+                <h4>Matriz VSA Ballenas MTF</h4>
                 <table class="vsa-table">
                     <thead>
-                        <tr>
-                            <th>Timeframe</th>
-                            <th>Señal VSA</th>
-                            <th>Vol. Transado</th>
-                            <th>% Compra</th>
-                            <th>% Venta</th>
-                        </tr>
+                        <tr><th>TF</th><th>Señal</th><th>Vol</th><th>%C</th><th>%V</th></tr>
                     </thead>
-                    <tbody>
-                        <tr><td>5 Minutos</td><td><span class="badge-vsa badge-buy">BUY</span></td><td>125.26</td><td class="txt-buy">100.0%</td><td class="txt-sell">0.0%</td></tr>
-                        <tr><td>15 Minutos</td><td><span class="badge-vsa badge-sell">SELL</span></td><td>19.27</td><td class="txt-buy">25.8%</td><td class="txt-sell">74.2%</td></tr>
-                        <tr><td>1 Hora</td><td><span class="badge-vsa badge-sell">SELL</span></td><td>2.18K</td><td class="txt-buy">18.3%</td><td class="txt-sell">81.7%</td></tr>
-                        <tr><td>4 Horas</td><td><span class="badge-vsa badge-sell">SELL</span></td><td>4.84K</td><td class="txt-buy">35.5%</td><td class="txt-sell">64.5%</td></tr>
-                        <tr><td>1 Diario</td><td><span class="badge-vsa badge-buy">BUY</span></td><td>22.15K</td><td class="txt-buy">23.8%</td><td class="txt-sell">76.2%</td></tr>
-                        <tr><td>1 Semana</td><td><span class="badge-vsa badge-buy">BUY</span></td><td>108.47K</td><td class="txt-buy">88.9%</td><td class="txt-sell">11.1%</td></tr>
-                        <tr><td>1 Mes</td><td><span class="badge-vsa badge-buy">BUY</span></td><td>11.96</td><td class="txt-buy">0.0%</td><td class="txt-sell">100.0%</td></tr>
+                    <tbody id="vsa-mtf-tbody">
+                        <tr id="row-5m"><td>5M</td><td><span class="badge-neu">NEU</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-15m"><td>15M</td><td><span class="badge-neu">NEU</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-1h"><td>1H</td><td><span class="badge-neu">NEU</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-4h"><td>4H</td><td><span class="badge-neu">NEU</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-1d"><td>1D</td><td><span class="badge-neu">NEU</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
                     </tbody>
                 </table>
+            </div>
 
-                <div class="vsa-config-box">
-                    <div class="vsa-config-title">Configuración VSA</div>
-                    <div class="vsa-config-row">
-                        <span>Período Prom. Vol:</span>
-                        <input type="number" id="cfg-vsa-period" value="20">
-                    </div>
-                    <div class="vsa-config-row">
-                        <span>Mult. Vol Ballena:</span>
-                        <input type="number" step="0.1" id="cfg-vsa-mult" value="1.8">
-                    </div>
-                </div>
+            <div id="dash-module-footprint" class="dash-module">
+                <h4>Sesgo & Invalidez</h4>
+                <div class="dash-row"><span>Sesgo:</span><span id="dash-bias" class="dash-val">--</span></div>
+                <div class="dash-row"><span>Entrada Sug:</span><span id="dash-entry" class="dash-val">--</span></div>
+                <div class="dash-row"><span>TP Objetivo:</span><span id="dash-tp" class="dash-val" style="color: #58a6ff;">--</span></div>
+                <div class="dash-row"><span>Stop Loss:</span><span id="dash-sl" class="dash-val" style="color: #f85149;">--</span></div>
             </div>
         </div>
     </div>
 
     <script>
     document.addEventListener("DOMContentLoaded", function () {
-        let showCRL = true;
-        let showSRLines = true;
-        let showBuySellSignals = true;
-        let showDashboardMTF = true;
+        const TELEGRAM_CONFIG = { enabled: false, username: "ERC1670" };
 
-        let activeSRSeries = [];
-        let activeHTFLines = [];
-        let currentCandleData = [];
+        let audioCtx = null;
+        let calculatedMarkers = [];
+        let vsaLinesToDraw = [];
+        let activePriceLines = [];
         let wsConnection = null;
+        let currentCandleData = [];
+        let timerInterval = null;
+        let dailyCandlesCache = null;
 
-        let currentHigh = 0, currentLow = 0, currentEQ = 0;
+        let showSupertrend = true, showTrendline = true, showLiquidity = true;
+        let showVsa = true, showOb = true, showPivotsTf = true, showNewsOnChart = true;
 
-        const timeframeSelect = document.getElementById("timeframe");
-        const selectHTF = document.getElementById("tf-htf");
+        let periodoVol = 20, factorVol = 1.8;
+        let cachedEconomicEvents = [];
+
         const statusEl = document.getElementById("status");
-        const chartContainer = document.getElementById("chart-container");
-        const dashboardOverlay = document.getElementById("vsa-dashboard-overlay");
-        const boxDecision = document.getElementById("auto-decision-box");
-        const htfPanel = document.getElementById("htf-draw-panel");
+        const timeframeSelect = document.getElementById("timeframe");
+        const chartContainer = document.getElementById("chart");
+        const overlay = document.getElementById("labels-overlay");
+        const ctx = overlay.getContext("2d");
 
-        const btnCRL = document.getElementById("btn-toggle-crl");
-        const btnSR = document.getElementById("btn-toggle-sr");
-        const btnSignals = document.getElementById("btn-toggle-signals");
-        const btnDashboard = document.getElementById("btn-toggle-dashboard");
+        const timerDisplay = document.getElementById("timer-display");
+        const timerProgress = document.getElementById("timer-progress");
 
+        // Inicializar Gráfico
         const chart = LightweightCharts.createChart(chartContainer, {
             width: chartContainer.clientWidth,
             height: chartContainer.clientHeight,
-            layout: { background: { type: 'solid', color: '#0b0e14' }, textColor: '#d1d4dc' },
-            grid: { vertLines: { color: 'rgba(30, 35, 45, 0.6)' }, horzLines: { color: 'rgba(30, 35, 45, 0.6)' } },
-            timeScale: { borderColor: '#1e232d', timeVisible: true, secondsVisible: false, rightOffset: 18 },
-            rightPriceScale: { borderColor: '#1e232d', autoScale: true, alignLabels: true }
+            layout: { background: { type: 'solid', color: '#0d1117' }, textColor: '#c9d1d9' },
+            grid: { vertLines: { color: '#21262d' }, horzLines: { color: '#21262d' } },
+            timeScale: { borderColor: '#30363d', timeVisible: true, secondsVisible: false, rightOffset: 12 },
+            rightPriceScale: { borderColor: '#30363d', autoScale: true }
         });
 
-        const candlestickSeries = chart.addSeries 
-            ? chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#0ecb81', downColor: '#f6465d', borderVisible: false, wickUpColor: '#0ecb81', wickDownColor: '#f6465d' })
-            : chart.addCandlestickSeries({ upColor: '#0ecb81', downColor: '#f6465d', borderVisible: false, wickUpColor: '#0ecb81', wickDownColor: '#f6465d' });
+        const candlestickSeries = chart.addCandlestickSeries({
+            upColor: '#238636', downColor: '#da3633', borderVisible: false, wickUpColor: '#238636', wickDownColor: '#da3633'
+        });
+
+        const trendLineSeries = chart.addLineSeries({
+            color: '#58a6ff', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid
+        });
+
+        function resizeCanvas() {
+            overlay.width = chartContainer.clientWidth;
+            overlay.height = chartContainer.clientHeight;
+            drawOverlay();
+        }
 
         const resizeObserver = new ResizeObserver(entries => {
             if (!entries || entries.length === 0) return;
             const { width, height } = entries[0].contentRect;
             chart.applyOptions({ width, height });
+            resizeCanvas();
         });
         resizeObserver.observe(chartContainer);
+        chart.timeScale().subscribeVisibleLogicalRangeChange(() => drawOverlay());
 
-        function getTimeframeSeconds(tf) {
-            const map = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
-            return map[tf] || 900;
-        }
-
-        async function fetchBinanceKlines(interval, limit = 300) {
-            const endpoints = [
-                `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`,
-                `https://api1.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`
-            ];
-            for (let url of endpoints) {
-                try {
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        const data = await res.json();
-                        return data.map(d => ({
-                            time: Math.floor(d[0] / 1000),
-                            open: parseFloat(d[1]),
-                            high: parseFloat(d[2]),
-                            low: parseFloat(d[3]),
-                            close: parseFloat(d[4]),
-                            volume: parseFloat(d[5])
-                        }));
-                    }
-                } catch (e) {}
+        // Audio System
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtxClass) audioCtx = new AudioCtxClass();
             }
-            return [];
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        document.addEventListener('click', initAudioContext, { once: true });
+
+        function playBeep(type) {
+            try {
+                initAudioContext();
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.setValueAtTime(type === "BUY" ? 800 : 400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } catch (e) {}
         }
 
-        // DIBUJA LOS SEGMENTOS CON LAS ETIQUETAS DESPLAZADAS A LA DERECHA DE LA VELA ACTUAL
-        function renderSRLevels(currentPrice) {
-            activeSRSeries.forEach(s => { try { chart.removeSeries(s); } catch(e){} });
-            activeSRSeries = [];
+        // VSA Analysis & Overlay Engine
+        function analyzeVSAData(candles, period, factor) {
+            if (!candles || candles.length < period + 1) return { events: [], lastSupport: null, lastResistance: null, lastState: null };
+            let events = [], lastSupport = null, lastResistance = null, lastState = null;
 
-            if (!showSRLines || currentCandleData.length < 20) return;
+            for (let i = period; i < candles.length; i++) {
+                let sumVol = 0;
+                for (let j = i - period; j < i; j++) sumVol += candles[j].volume;
+                const avgVol = sumVol / period;
+                const candle = candles[i];
+                const range = candle.high - candle.low;
+                const effVol = candle.volume || 1.0;
+                const isWhale = effVol > (avgVol * factor);
 
-            const tfSec = getTimeframeSeconds(timeframeSelect.value);
+                const volBuy = range === 0 ? effVol / 2 : effVol * ((candle.close - candle.low) / range);
+                const volSell = effVol - volBuy;
+                const deltaNet = volBuy - volSell;
+
+                const mInf = Math.min(candle.open, candle.close) - candle.low;
+                const mSup = candle.high - Math.max(candle.open, candle.close);
+
+                const isBuy = isWhale && (deltaNet > 0 || mInf > (range * 0.35));
+                const isSell = isWhale && (deltaNet < 0 || mSup > (range * 0.35));
+
+                if (isBuy) {
+                    const ev = { index: i, time: candle.time, type: 'BUY', price: candle.low, vol: effVol };
+                    events.push(ev);
+                    lastSupport = ev;
+                } else if (isSell) {
+                    const ev = { index: i, time: candle.time, type: 'SELL', price: candle.high, vol: effVol };
+                    events.push(ev);
+                    lastResistance = ev;
+                }
+
+                if (i === candles.length - 1) {
+                    lastState = {
+                        isBuy: isBuy, isSell: isSell, volume: effVol,
+                        pctBuy: ((volBuy / effVol) * 100).toFixed(1),
+                        pctSell: ((volSell / effVol) * 100).toFixed(1)
+                    };
+                }
+            }
+            return { events, lastSupport, lastResistance, lastState };
+        }
+
+        function drawOverlay() {
+            ctx.clearRect(0, 0, overlay.width, overlay.height);
+            if (!showVsa || vsaLinesToDraw.length === 0 || currentCandleData.length === 0) return;
+
+            const timeScale = chart.timeScale();
             const lastCandle = currentCandleData[currentCandleData.length - 1];
-            
-            // Inicio del segmento: 4 velas atras
-            const startTime = lastCandle.time - (tfSec * 4);
-            // Fin del segmento: 6 velas en el futuro (desplazado a la derecha de la vela actual)
-            const endTime = lastCandle.time + (tfSec * 6);
+            let lastCandleX = timeScale.timeToCoordinate(lastCandle.time) || (overlay.width - 65);
 
-            const srConfig = [
-                { price: currentPrice + 680, color: '#f6465d', title: 'Res 1H', lineWidth: 3 },
-                { price: currentPrice + 520, color: '#f6465d', title: 'Res 5m', lineWidth: 3 },
-                { price: currentPrice + 390, color: '#8e24aa', title: 'Sop 4H', lineWidth: 3 },
-                { price: currentPrice + 190, color: '#f6465d', title: 'Res Chart', lineWidth: 3 },
-                { price: currentPrice + 110, color: '#f6465d', title: 'Res 15m', lineWidth: 2 },
-                { price: currentPrice - 90,  color: '#00bcd4', title: 'Sop Chart', lineWidth: 3 },
-                { price: currentPrice - 160, color: '#00bcd4', title: 'Sop 15m', lineWidth: 2 },
-                { price: currentPrice - 610, color: '#00bcd4', title: 'Sop 5m', lineWidth: 2 },
-                { price: currentPrice - 1380, color: '#2962ff', title: 'Sop 1H', lineWidth: 4 }
-            ];
+            let drawableItems = [];
+            vsaLinesToDraw.forEach(item => {
+                const y = candlestickSeries.priceToCoordinate(item.price);
+                if (y !== null && y >= 0 && y <= overlay.height) {
+                    let startX = item.startTime ? Math.max(0, timeScale.timeToCoordinate(item.startTime) || 0) : 0;
+                    drawableItems.push({ ...item, y: y, labelY: y, startX: startX, endX: lastCandleX });
+                }
+            });
 
-            srConfig.forEach(cfg => {
-                const lineSeries = chart.addSeries
-                    ? chart.addSeries(LightweightCharts.LineSeries, {
-                        color: cfg.color,
-                        lineWidth: cfg.lineWidth,
-                        crosshairMarkerVisible: false,
-                        priceLineVisible: false,
-                        lastValueVisible: false
-                    })
-                    : chart.addLineSeries({
-                        color: cfg.color,
-                        lineWidth: cfg.lineWidth,
-                        crosshairMarkerVisible: false,
-                        priceLineVisible: false,
-                        lastValueVisible: false
-                    });
+            drawableItems.sort((a, b) => a.y - b.y);
+            for (let i = 1; i < drawableItems.length; i++) {
+                if (drawableItems[i].labelY - drawableItems[i - 1].labelY < 16) {
+                    drawableItems[i].labelY = drawableItems[i - 1].labelY + 16;
+                }
+            }
 
-                lineSeries.setData([
-                    { time: startTime, value: cfg.price },
-                    { time: endTime, value: cfg.price }
-                ]);
+            drawableItems.forEach(item => {
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                if (item.style === 'dashed') ctx.setLineDash([4, 4]);
+                else ctx.setLineDash([]);
+                ctx.moveTo(item.startX, item.y);
+                ctx.lineTo(item.endX, item.y);
+                ctx.stroke();
 
-                lineSeries.createPriceLine({
-                    price: cfg.price,
-                    color: cfg.color,
-                    lineWidth: 0,
-                    axisLabelVisible: true,
-                    title: cfg.title
-                });
+                ctx.font = "bold 9px sans-serif";
+                const rectW = ctx.measureText(item.title).width + 8;
+                const rectX = item.endX + 5;
+                const rectY = item.labelY - 7;
 
-                activeSRSeries.push(lineSeries);
+                ctx.fillStyle = item.color;
+                ctx.fillRect(rectX, rectY, rectW, 14);
+                ctx.fillStyle = "#ffffff";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(item.title, rectX + (rectW / 2), item.labelY);
             });
         }
 
-        async function loadHTFData() {
-            const htfVal = selectHTF.value;
-            document.getElementById('htf-name-label').innerText = `${htfVal.toUpperCase()} - HTF CANDLE`;
-
-            const htfData = await fetchBinanceKlines(htfVal, 5);
-            if (htfData.length < 2) return;
-
-            const candle = htfData[htfData.length - 2];
-            currentHigh = candle.high;
-            currentLow = candle.low;
-            currentEQ = currentLow + (currentHigh - currentLow) * 0.5;
-
-            document.getElementById('txt-bsl').innerText = `$${currentHigh.toFixed(1)}`;
-            document.getElementById('txt-eq').innerText = `$${currentEQ.toFixed(1)}`;
-            document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
-
-            activeHTFLines.forEach(line => { try { candlestickSeries.removePriceLine(line); } catch(e){} });
-            activeHTFLines = [];
-
-            if (showCRL) {
-                activeHTFLines.push(candlestickSeries.createPriceLine({ price: currentHigh, color: '#ff5252', lineWidth: 2, lineStyle: 2, title: 'BSL' }));
-                activeHTFLines.push(candlestickSeries.createPriceLine({ price: currentEQ, color: '#ffb300', lineWidth: 1, lineStyle: 0, title: '50% EQ' }));
-                activeHTFLines.push(candlestickSeries.createPriceLine({ price: currentLow, color: '#00e676', lineWidth: 2, lineStyle: 2, title: 'SSL' }));
-            }
+        // Binance KLines REST Fetching
+        async function fetchKlines(interval, limit = 300) {
+            const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("API Binance Error");
+            const data = await res.json();
+            return data.map(d => ({
+                time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
+            }));
         }
 
-        function processSignalsAndDecision() {
-            if (!currentCandleData || currentCandleData.length < 20) return;
-
-            const markers = [];
-
-            if (showCRL && currentHigh && currentLow) {
-                const lastBar = currentCandleData[currentCandleData.length - 1];
-                if (lastBar.low < currentLow && lastBar.close > currentLow) {
-                    boxDecision.className = "state-buy";
-                    document.getElementById("dec-action").innerText = "🚀 ENTRAR EN COMPRA (LONG)";
-                    document.getElementById("dec-reason").innerText = `Barrido de SSL detectado.`;
-                } else if (lastBar.high > currentHigh && lastBar.close < currentHigh) {
-                    boxDecision.className = "state-sell";
-                    document.getElementById("dec-action").innerText = "🐻 ENTRAR EN VENTA (SHORT)";
-                    document.getElementById("dec-reason").innerText = `Barrido de BSL detectado.`;
-                } else {
-                    boxDecision.className = "state-wait";
-                    document.getElementById("dec-action").innerText = "⏳ ESPERAR OPORTUNIDAD";
-                    document.getElementById("dec-reason").innerText = "El precio está en zona neutra.";
-                }
-            }
-
-            if (showBuySellSignals) {
-                const period = parseInt(document.getElementById("cfg-vsa-period").value) || 20;
-                const mult = parseFloat(document.getElementById("cfg-vsa-mult").value) || 1.8;
-
-                for (let i = period; i < currentCandleData.length; i++) {
-                    let volSum = 0;
-                    for (let j = i - period; j < i; j++) volSum += currentCandleData[j].volume;
-                    const avgVol = volSum / period;
-                    const c = currentCandleData[i];
-
-                    if (c.volume > avgVol * mult) {
-                        if (c.close > c.open) {
-                            markers.push({ time: c.time, position: 'belowBar', color: '#0ecb81', shape: 'arrowUp', text: 'BUY' });
-                        } else if (c.close < c.open) {
-                            markers.push({ time: c.time, position: 'aboveBar', color: '#f6465d', shape: 'arrowDown', text: 'SELL' });
-                        }
+        async function updateVSADashboardMTF() {
+            const tfs = ['5m', '15m', '1h', '4h', '1d'];
+            for (const tf of tfs) {
+                try {
+                    const candles = await fetchKlines(tf, 100);
+                    const { lastState } = analyzeVSAData(candles, periodoVol, factorVol);
+                    const row = document.getElementById(`row-${tf}`);
+                    if (row && lastState) {
+                        row.cells[1].innerHTML = lastState.isBuy ? `<span class="badge-buy">BUY</span>` : (lastState.isSell ? `<span class="badge-sell">SELL</span>` : `<span class="badge-neu">NEU</span>`);
+                        row.cells[2].innerText = (lastState.volume / 1000).toFixed(1) + "K";
+                        row.cells[3].innerText = `${lastState.pctBuy}%`;
+                        row.cells[4].innerText = `${lastState.pctSell}%`;
                     }
-                }
+                } catch (e) {}
             }
-            candlestickSeries.setMarkers(markers);
         }
 
-        async function loadTerminal() {
-            statusEl.innerText = "Cargando...";
-            statusEl.style.color = "#ffd700";
+        async function processIndicators() {
+            if (!currentCandleData || currentCandleData.length === 0) return;
+            vsaLinesToDraw = [];
+            let allMarkers = [];
+            const lastCandle = currentCandleData[currentCandleData.length - 1];
 
-            const tf = timeframeSelect.value;
-            currentCandleData = await fetchBinanceKlines(tf, 300);
+            if (showVsa) {
+                const { events, lastSupport, lastResistance } = analyzeVSAData(currentCandleData, periodoVol, factorVol);
+                events.forEach(e => {
+                    allMarkers.push({
+                        time: e.time, position: e.type === 'BUY' ? 'belowBar' : 'aboveBar',
+                        color: e.type === 'BUY' ? '#3fb950' : '#f85149', shape: 'circle', text: 'VSA'
+                    });
+                });
 
-            if (currentCandleData.length > 0) {
-                candlestickSeries.setData(currentCandleData);
-                renderSRLevels(currentCandleData[currentCandleData.length - 1].close);
-                processSignalsAndDecision();
+                if (lastSupport) vsaLinesToDraw.push({ price: lastSupport.price, color: '#2ea043', title: 'Sop VSA', startTime: lastSupport.time });
+                if (lastResistance) vsaLinesToDraw.push({ price: lastResistance.price, color: '#f85149', title: 'Res VSA', startTime: lastResistance.time });
             }
 
-            connectWebSocket(tf);
+            calculatedMarkers = allMarkers.sort((a, b) => a.time - b.time);
+            candlestickSeries.setMarkers(calculatedMarkers);
+            drawOverlay();
+
+            // Realtime Dash Updates
+            document.getElementById("dash-bias").innerText = lastCandle.close >= lastCandle.open ? "ALCISTA 🚀" : "BAJISTA 🐻";
+            document.getElementById("dash-bias").style.color = lastCandle.close >= lastCandle.open ? "#3fb950" : "#f85149";
+            document.getElementById("dash-entry").innerText = `$${lastCandle.close.toFixed(2)}`;
+            document.getElementById("dash-tp").innerText = `$${(lastCandle.close * 1.015).toFixed(2)}`;
+            document.getElementById("dash-sl").innerText = `$${(lastCandle.close * 0.99).toFixed(2)}`;
         }
 
         function connectWebSocket(interval) {
             if (wsConnection) wsConnection.close();
             wsConnection = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`);
 
-            wsConnection.onopen = () => { statusEl.innerText = "Conectado ✓"; statusEl.style.color = "#0ecb81"; };
-            wsConnection.onerror = () => { statusEl.innerText = "Error WS"; statusEl.style.color = "#f6465d"; };
-            wsConnection.onmessage = (event) => {
-                const msg = JSON.parse(event.data);
-                const k = msg.k;
-                const candle = {
-                    time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v)
-                };
+            wsConnection.onopen = () => { statusEl.style.display = "none"; };
+            wsConnection.onmessage = async (event) => {
+                const k = JSON.parse(event.data).k;
+                const candle = { time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v) };
+                
                 candlestickSeries.update(candle);
-
-                const lastIdx = currentCandleData.length - 1;
-                if (lastIdx >= 0 && currentCandleData[lastIdx].time === candle.time) currentCandleData[lastIdx] = candle;
-                else currentCandleData.push(candle);
-
-                renderSRLevels(candle.close);
-                processSignalsAndDecision();
+                if (currentCandleData.length > 0) {
+                    if (currentCandleData[currentCandleData.length - 1].time === candle.time) {
+                        currentCandleData[currentCandleData.length - 1] = candle;
+                    } else {
+                        currentCandleData.push(candle);
+                        if (currentCandleData.length > 500) currentCandleData.shift();
+                    }
+                }
+                if (k.x) processIndicators();
             };
         }
 
-        btnCRL.addEventListener('click', () => {
-            showCRL = !showCRL;
-            btnCRL.classList.toggle('active', showCRL);
-            boxDecision.classList.toggle('hidden', !showCRL);
-            htfPanel.classList.toggle('hidden', !showCRL);
+        async function renderChart() {
+            statusEl.style.display = "block";
+            statusEl.innerText = "Cargando...";
+            const selectedTF = timeframeSelect.value;
             
-            loadHTFData();
-            processSignalsAndDecision();
-            
-            setTimeout(() => {
-                chart.applyOptions({ width: chartContainer.clientWidth });
-            }, 50);
-        });
-
-        btnSR.addEventListener('click', () => {
-            showSRLines = !showSRLines;
-            btnSR.classList.toggle('active', showSRLines);
-            if (currentCandleData.length > 0) renderSRLevels(currentCandleData[currentCandleData.length - 1].close);
-        });
-
-        btnSignals.addEventListener('click', () => {
-            showBuySellSignals = !showBuySellSignals;
-            btnSignals.classList.toggle('active', showBuySellSignals);
-            processSignalsAndDecision();
-        });
-
-        btnDashboard.addEventListener('click', () => {
-            showDashboardMTF = !showDashboardMTF;
-            btnDashboard.classList.toggle('active', showDashboardMTF);
-            dashboardOverlay.classList.toggle('hidden', !showDashboardMTF);
-        });
-
-        timeframeSelect.addEventListener('change', loadTerminal);
-        selectHTF.addEventListener('change', async () => {
-            await loadHTFData();
-            processSignalsAndDecision();
-        });
-
-        document.getElementById("cfg-vsa-period").addEventListener("change", () => processSignalsAndDecision());
-        document.getElementById("cfg-vsa-mult").addEventListener("change", () => processSignalsAndDecision());
-
-        async function init() {
-            await loadHTFData();
-            await loadTerminal();
+            currentCandleData = await fetchKlines(selectedTF, 300);
+            candlestickSeries.setData(currentCandleData);
+            await processIndicators();
+            await updateVSADashboardMTF();
+            connectWebSocket(selectedTF);
         }
 
-        init();
+        // Bind Controls
+        timeframeSelect.addEventListener('change', renderChart);
+        document.getElementById("toggle-vsa").addEventListener('click', function() {
+            showVsa = !showVsa;
+            this.classList.toggle('active', showVsa);
+            this.classList.toggle('inactive', !showVsa);
+            processIndicators();
+        });
+
+        renderChart();
     });
     </script>
 </body>
