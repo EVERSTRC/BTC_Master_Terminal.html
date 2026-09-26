@@ -353,20 +353,31 @@
             };
         }
 
-        // DIBUJO DE OVERLAY Y ALGORITMO ANTICOLISIÓN DE ETIQUETAS
+        // RENDERIZADO exacto del original:
+        // - Inicia exactamente en la vela donde nació la ballena (startTime)
+        // - Termina en la última vela con su etiqueta flotante
+        // - Anticolisión de etiquetas si están muy juntas
         function drawOverlay() {
             ctx.clearRect(0, 0, overlay.width, overlay.height);
             if (!showVsa || vsaLinesToDraw.length === 0 || currentCandleData.length === 0) return;
 
             const timeScale = chart.timeScale();
-            const labelColX = overlay.width - 70; // Alineación fija a la derecha
+            const lastCandle = currentCandleData[currentCandleData.length - 1];
+            let endX = timeScale.timeToCoordinate(lastCandle.time) || (overlay.width - 60);
 
-            // 1. Obtener coordenadas Y de cada línea
             let drawableItems = [];
             vsaLinesToDraw.forEach(item => {
                 const y = candlestickSeries.priceToCoordinate(item.price);
                 if (y !== null && y >= 0 && y <= overlay.height) {
-                    let startX = item.startTime ? Math.max(0, timeScale.timeToCoordinate(item.startTime) || 0) : 0;
+                    // Si hay tiempo de inicio se calcula la coordenada X de esa vela; si la vela no está en pantalla, usa 0
+                    let startX = 0;
+                    if (item.startTime) {
+                        const calculatedX = timeScale.timeToCoordinate(item.startTime);
+                        if (calculatedX !== null) {
+                            startX = Math.max(0, calculatedX);
+                        }
+                    }
+
                     drawableItems.push({
                         ...item,
                         originalY: y,
@@ -376,11 +387,10 @@
                 }
             });
 
-            // 2. Ordenar por precio Y (de arriba hacia abajo)
+            // Ordenar por coordenada Y para anticolisión
             drawableItems.sort((a, b) => a.originalY - b.originalY);
 
-            // 3. Algoritmo Anticolisión: Ajustar Y para evitar solapamiento
-            const labelHeight = 15;
+            // Algoritmo Anticolisión
             const minGap = 16; 
             for (let i = 1; i < drawableItems.length; i++) {
                 let prev = drawableItems[i - 1];
@@ -390,39 +400,37 @@
                 }
             }
 
-            // 4. Renderizar Líneas y Etiquetas perfectamente separadas
+            // Dibujar cada línea exactamente desde su origen (vela ballena) hasta la vela actual
             drawableItems.forEach(item => {
                 ctx.save();
                 ctx.strokeStyle = item.color;
                 ctx.lineWidth = 1.5;
                 if (item.dash && item.dash.length > 0) ctx.setLineDash(item.dash);
 
-                // Dibujar Línea hasta el borde del Label
                 ctx.beginPath();
                 ctx.moveTo(item.startX, item.originalY);
-                ctx.lineTo(labelColX, item.originalY);
+                ctx.lineTo(endX, item.originalY);
                 if (item.originalY !== item.adjustedY) {
-                    // Pequeña diagonal si el label se desplazó
-                    ctx.lineTo(labelColX + 4, item.adjustedY);
+                    ctx.lineTo(endX + 3, item.adjustedY);
                 }
                 ctx.stroke();
                 ctx.restore();
 
-                // Dibujar Etiqueta redondeada sin superposición
+                // Dibujar Etiqueta
                 ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Roboto, sans-serif";
                 const textWidth = ctx.measureText(item.title).width;
                 const rectW = textWidth + 8;
-                const rectH = labelHeight;
+                const rectH = 15;
 
                 ctx.fillStyle = item.color;
                 ctx.beginPath();
-                ctx.roundRect(labelColX + 4, item.adjustedY - (rectH / 2), rectW, rectH, 3);
+                ctx.roundRect(endX + 3, item.adjustedY - (rectH / 2), rectW, rectH, 3);
                 ctx.fill();
 
                 ctx.fillStyle = "#ffffff";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.fillText(item.title, labelColX + 4 + (rectW / 2), item.adjustedY);
+                ctx.fillText(item.title, endX + 3 + (rectW / 2), item.adjustedY);
             });
         }
 
