@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - Immediate Signal Trigger</title>
+    <title>Bitcoin Trading Terminal - Supertrend Only</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,8 +12,8 @@
             width: 100vw; 
             height: 100vh; 
             overflow: hidden; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif; 
-            background-color: #0b0e14; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #131722; 
             color: #d1d4dc; 
             display: flex; 
             flex-direction: column; 
@@ -23,39 +23,30 @@
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
-            padding: 4px 12px; 
-            background-color: #12161f; 
-            border-bottom: 1px solid #1e2330; 
+            padding: 4px 10px; 
+            background-color: #1e222d; 
+            border-bottom: 1px solid #2a2e39; 
             flex-shrink: 0; 
             min-height: 42px;
             width: 100%;
         }
 
         .controls-group { display: flex; align-items: center; gap: 6px; }
-        label { font-size: 11px; color: #8b949e; }
+        label { font-size: 11px; color: #787b86; }
         select, button { 
-            background-color: #1e2330; 
-            color: #c9d1d9; 
-            border: 1px solid #2d3446; 
-            padding: 4px 8px; 
+            background-color: #2a2e39; 
+            color: #d1d4dc; 
+            border: 1px solid #363c4e; 
+            padding: 3px 6px; 
             border-radius: 4px; 
             font-size: 11px; 
             cursor: pointer; 
             transition: all 0.2s; 
         }
-        select:hover, button:hover { background-color: #2d3446; }
-        button.active { background-color: #1f6feb; color: #ffffff; border-color: #388bfd; }
-        button.inactive { opacity: 0.5; background-color: #12161f; color: #8b949e; }
-        
-        .status-badge {
-            background-color: rgba(46, 160, 67, 0.15);
-            color: #3fb950;
-            border: 1px solid #2ea043;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 10px;
-            font-weight: bold;
-        }
+        select:hover, button:hover { background-color: #363c4e; }
+        button.active { background-color: #2962ff; color: #ffffff; border-color: #2962ff; }
+        button.inactive { opacity: 0.5; }
+        #status { font-size: 11px; color: #2962ff; font-weight: bold; }
 
         #main-container { 
             display: flex; 
@@ -66,90 +57,53 @@
             height: calc(100vh - 42px); 
         }
 
-        #chart-wrapper {
-            flex: 1;
-            height: 100%;
-            position: relative;
-            min-width: 0;
-            min-height: 0;
-        }
-
-        #chart { width: 100%; height: 100%; }
-
-        #labels-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 5;
+        #chart { 
+            flex: 1; 
+            height: 100%; 
+            width: 100%; 
+            position: relative; 
         }
 
         #dashboard { 
-            width: 290px; 
-            min-width: 290px;
+            width: 250px; 
+            min-width: 250px;
             height: 100%;
-            background-color: #12161f; 
-            border-left: 1px solid #1e2330; 
-            padding: 10px; 
+            background-color: #1e222d; 
+            border-left: 1px solid #2a2e39; 
+            padding: 6px; 
             display: flex; 
             flex-direction: column; 
-            gap: 8px; 
+            gap: 5px; 
             overflow-y: auto; 
-            transition: margin-right 0.3s ease, width 0.3s ease;
-        }
-
-        #dashboard.collapsed {
-            display: none;
+            flex-shrink: 0; 
         }
 
         .dash-module { 
-            background-color: #0b0e14; 
-            border-radius: 6px; 
-            padding: 8px; 
-            border: 1px solid #1e2330; 
+            background-color: #131722; 
+            border-radius: 4px; 
+            padding: 6px 8px; 
+            border: 1px solid #2a2e39; 
             display: flex; 
             flex-direction: column; 
-            gap: 4px; 
+            gap: 3px; 
         }
         .dash-module h4 { 
             font-size: 10px; 
-            color: #8b949e; 
+            color: #787b86; 
             text-transform: uppercase; 
             letter-spacing: 0.5px; 
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         .dash-row { 
             display: flex; 
             justify-content: space-between; 
-            font-size: 11px; 
+            font-size: 10px; 
             align-items: center; 
         }
         .dash-val { font-weight: bold; }
 
-        .signal-box {
-            background-color: #161b22;
-            border: 1px dashed #30363d;
-            border-radius: 4px;
-            padding: 8px;
-            text-align: center;
-            margin-bottom: 4px;
-        }
-        .signal-title { font-size: 10px; color: #8b949e; margin-bottom: 2px; }
-        .signal-val { font-size: 13px; font-weight: bold; }
-
-        .vsa-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 4px; }
-        .vsa-table th { text-align: left; color: #58a6ff; padding: 4px 0; font-weight: bold; border-bottom: 1px solid #1e2330; }
-        .vsa-table td { padding: 4px 0; text-align: right; }
-        .vsa-table td:first-child { text-align: left; font-weight: bold; color: #c9d1d9; }
-
-        .badge-buy { background-color: #2ea043; color: #ffffff; padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: bold; }
-        .badge-sell { background-color: #f85149; color: #ffffff; padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: bold; }
-        .badge-neu { background-color: #30363d; color: #8b949e; padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: bold; }
-        
-        .txt-buy { color: #3fb950; font-weight: bold; }
-        .txt-sell { color: #f85149; font-weight: bold; }
+        #timer-progress-container { width: 100%; height: 3px; background-color: #2a2e39; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+        #timer-progress { height: 100%; width: 0%; background-color: #2962ff; transition: width 1s linear; }
     </style>
 </head>
 <body>
@@ -158,496 +112,333 @@
         <div class="controls-group">
             <label for="timeframe">TF:</label>
             <select id="timeframe">
-                <option value="1m">1 Minuto</option>
-                <option value="5m">5 Minutos</option>
-                <option value="15m" selected>15 Minutos</option>
-                <option value="1h">1 Hora</option>
-                <option value="4h">4 Horas</option>
-                <option value="1d">1 Diario</option>
+                <option value="1s">1 Sec</option>
+                <option value="1m">1 Min</option>
+                <option value="3m">3 Min</option>
+                <option value="5m">5 Min</option>
+                <option value="15m" selected>15 Min</option>
+                <option value="30m">30 Min</option>
+                <option value="1h">1 Hour</option>
+                <option value="4h">4 Hours</option>
+                <option value="1d">1 Day</option>
             </select>
-            <span class="status-badge">Disparo Inmediato Activo ✓</span>
+            <div id="status">Conectando...</div>
         </div>
 
         <div class="controls-group">
-            <button id="toggle-vsa" class="active">S/R Ballenas VSA</button>
-            <button id="toggle-supertrend" class="active">Entradas al Instante</button>
-            <button id="toggle-dash" class="active">Dashboard MTF</button>
+            <button id="toggle-supertrend" class="active">Supertrend</button>
         </div>
     </div>
 
     <div id="main-container">
-        <div id="chart-wrapper">
-            <div id="chart"></div>
-            <canvas id="labels-overlay"></canvas>
-        </div>
+        <div id="chart"></div>
 
         <div id="dashboard">
             <div class="dash-module">
-                <h4>DISPARO DE ENTRADA EN TIEMPO REAL</h4>
-                <div class="signal-box">
-                    <div class="signal-title">ESTADO DE ORDEN</div>
-                    <div id="signal-status" class="signal-val badge-neu">BUSCANDO GATILLO</div>
+                <h4>Vela Actual</h4>
+                <div class="dash-row">
+                    <span>Cierre en:</span>
+                    <span id="timer-display" class="dash-val">00:00</span>
                 </div>
-                <div class="dash-row"><span>Precio Entrada:</span><span id="signal-price" class="dash-val">--</span></div>
-                <div class="dash-row"><span>Hora Exacta:</span><span id="signal-time" class="dash-val">--</span></div>
+                <div id="timer-progress-container">
+                    <div id="timer-progress"></div>
+                </div>
             </div>
 
-            <div id="dash-module-vsa" class="dash-module">
-                <h4>MATRIZ VOLUMEN MTF</h4>
-                <table class="vsa-table">
-                    <thead>
-                        <tr><th>Timeframe</th><th>Señal VSA</th><th>Vol. Transado</th><th>% Compra</th><th>% Venta</th></tr>
-                    </thead>
-                    <tbody id="vsa-mtf-tbody">
-                        <tr id="row-5m"><td>5 Minutos</td><td><span id="badge-5m" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr id="row-15m"><td>15 Minutos</td><td><span id="badge-15m" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr id="row-1h"><td>1 Hora</td><td><span id="badge-1h" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr id="row-4h"><td>4 Horas</td><td><span id="badge-4h" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr id="row-1d"><td>1 Diario</td><td><span id="badge-1d" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="dash-module">
-                <h4>REGLAS DE GATILLO INMEDIATO</h4>
-                <div class="dash-row"><span>Ejecución:</span><span class="dash-val">Tick Actual</span></div>
-                <div class="dash-row"><span>Filtro Vol. Ballena:</span><span class="dash-val">> 2.0x Avg</span></div>
-                <div class="dash-row"><span>Confirmación ST:</span><span class="dash-val">Al romper nivel</span></div>
+            <div id="dash-module-supertrend" class="dash-module">
+                <h4>Supertrend</h4>
+                <div class="dash-row">
+                    <span>Señal:</span>
+                    <span id="dash-st-signal" class="dash-val">--</span>
+                </div>
+                <div class="dash-row">
+                    <span>Precio Señal:</span>
+                    <span id="dash-st-price" class="dash-val">--</span>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
     document.addEventListener("DOMContentLoaded", function () {
-        let currentCandleData = [];
-        let vsaLinesToDraw = [];
-        let wsConnection = null;
+        const TELEGRAM_CONFIG = { enabled: true, username: "ERC1670" };
 
+        let lastNotifiedSignalTime = null;
+        let lastNotifiedSignalType = null;
+        let audioCtx = null; 
         let showSupertrend = true;
-        let showVsa = true;
-        let showDash = true;
 
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        document.addEventListener('click', initAudioContext, { once: true });
+
+        function playBeepSound(type) {
+            try {
+                initAudioContext();
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                if (type === "BUY") {
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.3);
+                } else {
+                    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.3);
+                }
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.3);
+            } catch (e) {
+                console.warn("Audio error:", e);
+            }
+        }
+
+        function sendTelegramAlert(signalType, price, timeframe) {
+            if (!TELEGRAM_CONFIG.enabled || !TELEGRAM_CONFIG.username) return;
+            const icon = signalType === "BUY" ? "🟢🚀" : "🔴🐻";
+            const message = `ALERT SUPERTREND BTCUSDT\n\nSeñal: ${signalType} ${icon}\nPrecio Entrada: $${price.toFixed(2)}\nTimeframe: ${timeframe}`;
+            const userClean = TELEGRAM_CONFIG.username.replace("@", "");
+            const encodedMsg = encodeURIComponent(message);
+            fetch(`https://api.callmebot.com/text.php?user=@${userClean}&text=${encodedMsg}`, { mode: 'no-cors' })
+                .catch(err => console.error("Error Telegram:", err));
+        }
+
+        function evaluateSupertrendAlert(lastSignal, timeframe) {
+            if (!lastSignal || !lastSignal.time) return;
+            if (lastSignal.time !== lastNotifiedSignalTime && lastSignal.type !== lastNotifiedSignalType) {
+                lastNotifiedSignalTime = lastSignal.time;
+                lastNotifiedSignalType = lastSignal.type;
+                playBeepSound(lastSignal.type);
+                sendTelegramAlert(lastSignal.type, lastSignal.price, timeframe);
+            }
+        }
+
+        const statusEl = document.getElementById("status");
         const timeframeSelect = document.getElementById("timeframe");
         const chartContainer = document.getElementById("chart");
-        const overlay = document.getElementById("labels-overlay");
-        const dashboard = document.getElementById("dashboard");
-        const ctx = overlay.getContext("2d");
+        const btnSupertrend = document.getElementById("toggle-supertrend");
+        const modSupertrend = document.getElementById("dash-module-supertrend");
 
-        const mtfTimeframes = [
-            { tf: '5m', label: '5m', colorRes: '#ff3b30', colorSop: '#007aff', dash: [3, 3] },
-            { tf: '15m', label: '15m', colorRes: '#ff3b30', colorSop: '#007aff', dash: [3, 3] },
-            { tf: '1h', label: '1H', colorRes: '#ff3b30', colorSop: '#007aff', dash: [] },
-            { tf: '4h', label: '4H', colorRes: '#bf5af2', colorSop: '#bf5af2', dash: [] },
-            { tf: '1d', label: '1D', colorRes: '#ff9500', colorSop: '#ff9500', dash: [] }
-        ];
+        const timerDisplay = document.getElementById("timer-display");
+        const timerProgress = document.getElementById("timer-progress");
+        const dashStSignal = document.getElementById("dash-st-signal");
+        const dashStPrice = document.getElementById("dash-st-price");
+
+        let wsConnection = null;
+        let currentCandleData = [];
+        let timerInterval = null;
 
         const chart = LightweightCharts.createChart(chartContainer, {
             width: chartContainer.clientWidth,
             height: chartContainer.clientHeight,
-            layout: { background: { type: 'solid', color: '#0b0e14' }, textColor: '#c9d1d9' },
-            grid: { vertLines: { color: '#161b22' }, horzLines: { color: '#161b22' } },
-            timeScale: { borderColor: '#1e2330', timeVisible: true, secondsVisible: false, rightOffset: 12 },
-            rightPriceScale: { borderColor: '#1e2330', autoScale: true }
+            layout: { background: { type: 'solid', color: '#131722' }, textColor: '#d1d4dc' },
+            grid: { vertLines: { color: 'rgba(42, 46, 57, 0.5)' }, horzLines: { color: 'rgba(42, 46, 57, 0.5)' } },
+            timeScale: { borderColor: 'rgba(197, 203, 206, 0.8)', timeVisible: true, secondsVisible: true },
+            rightPriceScale: { autoScale: true, alignLabels: true, borderVisible: true }
         });
 
-        const candlestickSeries = chart.addCandlestickSeries({
-            upColor: '#089981', downColor: '#f23645', borderVisible: false, wickUpColor: '#089981', wickDownColor: '#f23645'
-        });
-
-        function resizeCanvas() {
-            overlay.width = chartContainer.clientWidth;
-            overlay.height = chartContainer.clientHeight;
-            drawOverlay();
-        }
+        const candlestickSeries = chart.addSeries 
+            ? chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#089981', downColor: '#f23645', borderVisible: false, wickUpColor: '#089981', wickDownColor: '#f23645' })
+            : chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderVisible: false, wickUpColor: '#089981', wickDownColor: '#f23645' });
 
         const resizeObserver = new ResizeObserver(entries => {
             if (!entries || entries.length === 0) return;
             const { width, height } = entries[0].contentRect;
             chart.applyOptions({ width, height });
-            resizeCanvas();
         });
         resizeObserver.observe(chartContainer);
-        chart.timeScale().subscribeVisibleLogicalRangeChange(() => drawOverlay());
 
-        function calculateSupertrend(data, period = 10, multiplier = 3.0) {
-            if (!data || data.length < period) return { signals: [] };
-
-            let tr = [];
-            for (let i = 0; i < data.length; i++) {
-                if (i === 0) {
-                    tr.push(data[i].high - data[i].low);
-                } else {
-                    const hl = data[i].high - data[i].low;
-                    const hpc = Math.abs(data[i].high - data[i - 1].close);
-                    const lpc = Math.abs(data[i].low - data[i - 1].close);
-                    tr.push(Math.max(hl, hpc, lpc));
-                }
-            }
-
-            let atr = new Array(data.length).fill(0);
-            let sumTR = 0;
-            for (let i = 0; i < period; i++) sumTR += tr[i];
-            atr[period - 1] = sumTR / period;
-
-            for (let i = period; i < data.length; i++) {
-                atr[i] = (atr[i - 1] * (period - 1) + tr[i]) / period;
-            }
-
-            let upperBand = new Array(data.length).fill(0);
-            let lowerBand = new Array(data.length).fill(0);
-            let trend = new Array(data.length).fill(1);
-            let signals = [];
-
-            for (let i = period - 1; i < data.length; i++) {
-                const hl2 = (data[i].high + data[i].low) / 2;
-                const basicUpper = hl2 + (multiplier * atr[i]);
-                const basicLower = hl2 - (multiplier * atr[i]);
-
-                if (i === period - 1) {
-                    upperBand[i] = basicUpper;
-                    lowerBand[i] = basicLower;
-                    trend[i] = 1;
-                } else {
-                    lowerBand[i] = (basicLower > lowerBand[i - 1] || data[i - 1].close < lowerBand[i - 1]) ? basicLower : lowerBand[i - 1];
-                    upperBand[i] = (basicUpper < upperBand[i - 1] || data[i - 1].close > upperBand[i - 1]) ? basicUpper : upperBand[i - 1];
-
-                    if (trend[i - 1] === 1) {
-                        trend[i] = data[i].close < lowerBand[i] ? -1 : 1;
-                    } else {
-                        trend[i] = data[i].close > upperBand[i] ? 1 : -1;
-                    }
-
-                    if (trend[i] !== trend[i - 1]) {
-                        signals.push({
-                            index: i,
-                            time: data[i].time,
-                            close: data[i].close,
-                            type: trend[i] === 1 ? 'BUY' : 'SELL'
-                        });
-                    }
-                }
-            }
-            return { signals };
+        function getIntervalInSeconds(interval) {
+            const unit = interval.slice(-1);
+            const val = parseInt(interval);
+            if (unit === 's') return val;
+            if (unit === 'm') return val * 60;
+            if (unit === 'h') return val * 3600;
+            if (unit === 'd') return val * 86400;
+            return 60;
         }
 
-        function analyzeVSAData(candles, period = 20, factor = 2.0) {
-            if (!candles || candles.length < period + 1) return { events: [], lastSupport: null, lastResistance: null, lastStats: null };
-            let events = [], lastSupport = null, lastResistance = null;
+        function startCandleTimer(interval) {
+            if (timerInterval) clearInterval(timerInterval);
+            const intervalSecs = getIntervalInSeconds(interval);
 
-            let totalVol = 0, totalBuy = 0, totalSell = 0;
-
-            for (let i = period; i < candles.length; i++) {
-                let sumVol = 0;
-                for (let j = i - period; j < i; j++) sumVol += candles[j].volume;
-                const avgVol = sumVol / period;
-                const candle = candles[i];
-                const range = candle.high - candle.low;
-                const effVol = candle.volume || 1.0;
+            function updateTimer() {
+                const nowSecs = Math.floor(Date.now() / 1000);
+                const elapsed = nowSecs % intervalSecs;
+                const remaining = intervalSecs - elapsed;
                 
-                const isWhale = effVol > (avgVol * factor);
+                const mins = Math.floor((remaining % 3600) / 60);
+                const secs = remaining % 60;
 
-                const volBuy = range === 0 ? effVol / 2 : effVol * ((candle.close - candle.low) / range);
-                const volSell = effVol - volBuy;
-                const deltaNet = volBuy - volSell;
-
-                totalVol += effVol;
-                totalBuy += volBuy;
-                totalSell += volSell;
-
-                const mInf = Math.min(candle.open, candle.close) - candle.low;
-                const mSup = candle.high - Math.max(candle.open, candle.close);
-
-                const isBuy = isWhale && (volBuy / effVol > 0.55 || mInf > (range * 0.40));
-                const isSell = isWhale && (volSell / effVol > 0.55 || mSup > (range * 0.40));
-
-                if (isBuy) {
-                    const ev = { index: i, time: candle.time, type: 'BUY', price: candle.low };
-                    events.push(ev);
-                    lastSupport = ev;
-                } else if (isSell) {
-                    const ev = { index: i, time: candle.time, type: 'SELL', price: candle.high };
-                    events.push(ev);
-                    lastResistance = ev;
-                }
+                timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                timerProgress.style.width = `${(elapsed / intervalSecs) * 100}%`;
             }
 
-            const pBuyVal = totalVol > 0 ? (totalBuy / totalVol) * 100 : 50;
-            const pSellVal = totalVol > 0 ? (totalSell / totalVol) * 100 : 50;
-            
-            let signal = 'NEUTRAL';
-            if (pBuyVal > 55) signal = 'BUY';
-            else if (pSellVal > 55) signal = 'SELL';
-
-            const pBuy = pBuyVal.toFixed(1) + "%";
-            const pSell = pSellVal.toFixed(1) + "%";
-            const volFormated = totalVol > 1000 ? (totalVol / 1000).toFixed(2) + "K" : totalVol.toFixed(2);
-
-            return { 
-                events, 
-                lastSupport, 
-                lastResistance, 
-                lastStats: { signal, vol: volFormated, pBuy, pSell } 
-            };
+            updateTimer();
+            timerInterval = setInterval(updateTimer, 1000);
         }
 
-        function drawOverlay() {
-            ctx.clearRect(0, 0, overlay.width, overlay.height);
-            if (!showVsa || vsaLinesToDraw.length === 0 || currentCandleData.length === 0) return;
+        // --- ALGORITMO SUPERTREND ---
+        function getSupertrendMarkers(candles, atrPeriods = 14, multiplier = 2.0) {
+            if (!candles || candles.length < atrPeriods + 1) return { stMarkers: [], lastSignal: null };
+            const len = candles.length;
+            const tr = new Float64Array(len);
+            tr[0] = candles[0].high - candles[0].low;
 
-            const timeScale = chart.timeScale();
-            const lastCandle = currentCandleData[currentCandleData.length - 1];
-            let candleX = timeScale.timeToCoordinate(lastCandle.time) || (overlay.width - 90);
-            
-            let labelOffsetX = candleX + 25; 
-
-            let drawableItems = [];
-            vsaLinesToDraw.forEach(item => {
-                const y = candlestickSeries.priceToCoordinate(item.price);
-                if (y !== null && y >= 0 && y <= overlay.height) {
-                    let startX = 0;
-                    if (item.startTime) {
-                        const calculatedX = timeScale.timeToCoordinate(item.startTime);
-                        if (calculatedX !== null) {
-                            startX = Math.max(0, calculatedX);
-                        }
-                    }
-
-                    drawableItems.push({
-                        ...item,
-                        originalY: y,
-                        adjustedY: y,
-                        startX: startX
-                    });
-                }
-            });
-
-            drawableItems.sort((a, b) => a.originalY - b.originalY);
-
-            const minGap = 16; 
-            for (let i = 1; i < drawableItems.length; i++) {
-                let prev = drawableItems[i - 1];
-                let curr = drawableItems[i];
-                if (curr.adjustedY - prev.adjustedY < minGap) {
-                    curr.adjustedY = prev.adjustedY + minGap;
-                }
-            }
-
-            drawableItems.forEach(item => {
-                ctx.save();
-                ctx.strokeStyle = item.color;
-                ctx.lineWidth = 1.5;
-                if (item.dash && item.dash.length > 0) ctx.setLineDash(item.dash);
-
-                ctx.beginPath();
-                ctx.moveTo(item.startX, item.originalY);
-                ctx.lineTo(labelOffsetX, item.originalY);
-                if (item.originalY !== item.adjustedY) {
-                    ctx.lineTo(labelOffsetX + 3, item.adjustedY);
-                }
-                ctx.stroke();
-                ctx.restore();
-
-                ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Roboto, sans-serif";
-                const textWidth = ctx.measureText(item.title).width;
-                const rectW = textWidth + 8;
-                const rectH = 15;
-
-                ctx.fillStyle = item.color;
-                ctx.beginPath();
-                if (ctx.roundRect) {
-                    ctx.roundRect(labelOffsetX + 3, item.adjustedY - (rectH / 2), rectW, rectH, 3);
-                } else {
-                    ctx.rect(labelOffsetX + 3, item.adjustedY - (rectH / 2), rectW, rectH);
-                }
-                ctx.fill();
-
-                ctx.fillStyle = "#ffffff";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(item.title, labelOffsetX + 3 + (rectW / 2), item.adjustedY);
-            });
-        }
-
-        async function fetchKlines(interval, limit = 200) {
-            try {
-                const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
-                const res = await fetch(url);
-                const data = await res.json();
-                return data.map(d => ({
-                    time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
-                }));
-            } catch (err) {
-                console.error("Error fetching klines:", err);
-                return [];
-            }
-        }
-
-        async function processIndicators() {
-            if (!currentCandleData || currentCandleData.length === 0) return;
-            let immediateMarkers = [];
-
-            const st = calculateSupertrend(currentCandleData, 10, 3.0);
-            const activeVsa = analyzeVSAData(currentCandleData, 20, 2.0);
-            let activeTriggerSignal = null;
-
-            // DETECCIÓN E INTEGRACIÓN DE DISPARO AL INSTANTE
-            if (showSupertrend) {
-                st.signals.forEach(stSig => {
-                    const matchingVsa = activeVsa.events.find(vsaEv => 
-                        vsaEv.type === stSig.type && Math.abs(vsaEv.index - stSig.index) <= 2
-                    );
-
-                    if (matchingVsa) {
-                        immediateMarkers.push({
-                            time: stSig.time,
-                            position: stSig.type === 'BUY' ? 'belowBar' : 'aboveBar',
-                            color: stSig.type === 'BUY' ? '#2ea043' : '#f85149',
-                            shape: stSig.type === 'BUY' ? 'arrowUp' : 'arrowDown',
-                            text: `ENTRY NOW (${stSig.type})`
-                        });
-
-                        activeTriggerSignal = {
-                            type: stSig.type,
-                            price: stSig.close,
-                            time: new Date(stSig.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                        };
-                    }
-                });
-            }
-
-            // Actualizar interfaz en tiempo real
-            const statusElem = document.getElementById("signal-status");
-            const priceElem = document.getElementById("signal-price");
-            const timeElem = document.getElementById("signal-time");
-
-            if (activeTriggerSignal) {
-                statusElem.innerText = `ENTRADA ACTIVA (${activeTriggerSignal.type})`;
-                statusElem.className = `signal-val ${activeTriggerSignal.type === 'BUY' ? 'txt-buy' : 'txt-sell'}`;
-                priceElem.innerText = `$${activeTriggerSignal.price.toFixed(2)}`;
-                timeElem.innerText = activeTriggerSignal.time;
-            } else {
-                statusElem.innerText = "ESPERANDO GATILLO";
-                statusElem.className = "signal-val badge-neu";
-            }
-
-            if (showVsa) {
-                const activeTF = timeframeSelect.value;
-                const mtfPromises = mtfTimeframes.map(cfg => 
-                    (cfg.tf === activeTF) ? Promise.resolve(currentCandleData) : fetchKlines(cfg.tf, 150)
+            for (let i = 1; i < len; i++) {
+                tr[i] = Math.max(
+                    candles[i].high - candles[i].low,
+                    Math.abs(candles[i].high - candles[i - 1].close),
+                    Math.abs(candles[i].low - candles[i - 1].close)
                 );
-
-                const mtfResults = await Promise.all(mtfPromises);
-                let lines = [];
-
-                mtfTimeframes.forEach((cfg, index) => {
-                    const candles = mtfResults[index];
-                    const { lastSupport, lastResistance, lastStats } = analyzeVSAData(candles, 20, 2.0);
-
-                    const row = document.getElementById(`row-${cfg.tf}`);
-                    if (row && lastStats) {
-                        const cellSignal = row.cells[1];
-                        if (lastStats.signal === 'BUY') {
-                            cellSignal.innerHTML = '<span class="badge-buy">BUY</span>';
-                        } else if (lastStats.signal === 'SELL') {
-                            cellSignal.innerHTML = '<span class="badge-sell">SELL</span>';
-                        } else {
-                            cellSignal.innerHTML = '<span class="badge-neu">NEUTRAL</span>';
-                        }
-                        
-                        row.cells[2].innerText = lastStats.vol;
-                        row.cells[3].innerText = lastStats.pBuy;
-                        row.cells[4].innerText = lastStats.pSell;
-                    }
-
-                    const isChartTF = cfg.tf === activeTF;
-                    if (lastSupport) {
-                        lines.push({ 
-                            price: lastSupport.price, 
-                            color: cfg.colorSop, 
-                            title: isChartTF ? 'Sop Chart' : `Sop ${cfg.label}`, 
-                            startTime: lastSupport.time,
-                            dash: cfg.dash 
-                        });
-                    }
-                    if (lastResistance) {
-                        lines.push({ 
-                            price: lastResistance.price, 
-                            color: cfg.colorRes, 
-                            title: isChartTF ? 'Res Chart' : `Res ${cfg.label}`, 
-                            startTime: lastResistance.time,
-                            dash: cfg.dash 
-                        });
-                    }
-                });
-                vsaLinesToDraw = lines;
-            } else {
-                vsaLinesToDraw = [];
             }
 
-            candlestickSeries.setMarkers(immediateMarkers.sort((a, b) => a.time - b.time));
-            drawOverlay();
+            const atr = new Float64Array(len);
+            let sumTR = 0;
+            for (let i = 0; i < atrPeriods; i++) sumTR += tr[i];
+            atr[atrPeriods - 1] = sumTR / atrPeriods;
+            for (let i = atrPeriods; i < len; i++) atr[i] = (atr[i - 1] * (atrPeriods - 1) + tr[i]) / atrPeriods;
+
+            const up = new Float64Array(len), dn = new Float64Array(len), trend = new Int32Array(len);
+            let currentTrend = 1;
+
+            for (let i = 0; i < len; i++) {
+                const src = (candles[i].high + candles[i].low) / 2;
+                let basicUp = src - (multiplier * atr[i]), basicDn = src + (multiplier * atr[i]);
+
+                if (i === 0) { up[i] = basicUp; dn[i] = basicDn; trend[i] = 1; continue; }
+
+                up[i] = candles[i - 1].close > up[i - 1] ? Math.max(basicUp, up[i - 1]) : basicUp;
+                dn[i] = candles[i - 1].close < dn[i - 1] ? Math.min(basicDn, dn[i - 1]) : basicDn;
+
+                if (trend[i - 1] === -1 && candles[i].close > dn[i - 1]) currentTrend = 1;
+                else if (trend[i - 1] === 1 && candles[i].close < up[i - 1]) currentTrend = -1;
+                else currentTrend = trend[i - 1];
+
+                trend[i] = currentTrend;
+            }
+
+            const stMarkers = [];
+            let lastSignal = null;
+
+            for (let i = 1; i < len; i++) {
+                if (trend[i] === 1 && trend[i - 1] === -1) {
+                    stMarkers.push({ time: candles[i].time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'ST BUY' });
+                    lastSignal = { type: 'BUY', price: candles[i].close, time: candles[i].time };
+                } else if (trend[i] === -1 && trend[i - 1] === 1) {
+                    stMarkers.push({ time: candles[i].time, position: 'aboveBar', color: '#ff1744', shape: 'arrowDown', text: 'ST SELL' });
+                    lastSignal = { type: 'SELL', price: candles[i].close, time: candles[i].time };
+                }
+            }
+            return { stMarkers, lastSignal };
         }
 
-        function connectWebSocket(interval) {
-            if (wsConnection) wsConnection.close();
-            wsConnection = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`);
+        async function fetchKlines(interval, limit = 500) {
+            const is1s = interval === "1s";
+            const endpoint = is1s ? 'uiKlines' : 'klines';
+            const url = `https://api.binance.com/api/v3/${endpoint}?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
 
-            wsConnection.onmessage = (event) => {
-                const k = JSON.parse(event.data).k;
-                const candle = { time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v) };
-                
-                candlestickSeries.update(candle);
-                if (currentCandleData.length > 0) {
-                    if (currentCandleData[currentCandleData.length - 1].time === candle.time) {
-                        currentCandleData[currentCandleData.length - 1] = candle;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("REST API Error");
+            const data = await res.json();
+
+            return data.map(d => ({
+                time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
+            }));
+        }
+
+        function processIndicators(isInitialLoad = false) {
+            if (!currentCandleData || currentCandleData.length === 0) return;
+
+            if (showSupertrend) {
+                const { stMarkers, lastSignal } = getSupertrendMarkers(currentCandleData);
+                candlestickSeries.setMarkers(stMarkers);
+
+                if (lastSignal) {
+                    dashStSignal.innerText = lastSignal.type;
+                    dashStSignal.style.color = lastSignal.type === "BUY" ? "#00e676" : "#ff1744";
+                    dashStPrice.innerText = `$${lastSignal.price.toFixed(2)}`;
+                    
+                    if (isInitialLoad) {
+                        lastNotifiedSignalTime = lastSignal.time;
+                        lastNotifiedSignalType = lastSignal.type;
                     } else {
-                        currentCandleData.push(candle);
-                        if (currentCandleData.length > 500) currentCandleData.shift();
+                        evaluateSupertrendAlert(lastSignal, timeframeSelect.value);
                     }
                 }
-                processIndicators();
-            };
+            } else {
+                candlestickSeries.setMarkers([]);
+                dashStSignal.innerText = "--";
+                dashStPrice.innerText = "--";
+            }
         }
 
         async function renderChart() {
-            const selectedTF = timeframeSelect.value;
-            currentCandleData = await fetchKlines(selectedTF, 300);
-            candlestickSeries.setData(currentCandleData);
-            await processIndicators();
-            connectWebSocket(selectedTF);
+            statusEl.style.display = "block";
+            statusEl.innerText = "Cargando datos...";
+
+            const selectedInterval = timeframeSelect.value;
+            startCandleTimer(selectedInterval);
+
+            try {
+                currentCandleData = await fetchKlines(selectedInterval, 500);
+                candlestickSeries.setData(currentCandleData);
+                processIndicators(true);
+                connectWebSocket(selectedInterval);
+            } catch (err) {
+                statusEl.innerText = "Error cargando datos";
+            }
         }
 
-        timeframeSelect.addEventListener('change', renderChart);
-        
-        document.getElementById("toggle-supertrend").addEventListener('click', function() {
+        function connectWebSocket(interval) {
+            if (wsConnection) {
+                wsConnection.onclose = null;
+                wsConnection.close();
+            }
+            wsConnection = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`);
+
+            wsConnection.onopen = () => { statusEl.style.display = "none"; };
+            wsConnection.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                const k = message.k;
+                const updatedCandle = {
+                    time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c), volume: parseFloat(k.v)
+                };
+
+                candlestickSeries.update(updatedCandle);
+
+                if (currentCandleData.length > 0) {
+                    const lastIdx = currentCandleData.length - 1;
+                    if (currentCandleData[lastIdx].time === updatedCandle.time) {
+                        currentCandleData[lastIdx] = updatedCandle;
+                    } else {
+                        currentCandleData.push(updatedCandle);
+                    }
+                    if (currentCandleData.length > 500) currentCandleData.shift();
+                    
+                    if (k.x) processIndicators(false);
+                }
+            };
+        }
+
+        btnSupertrend.addEventListener('click', () => {
             showSupertrend = !showSupertrend;
-            this.classList.toggle('active', showSupertrend);
-            this.classList.toggle('inactive', !showSupertrend);
-            processIndicators();
+            btnSupertrend.classList.toggle('active', showSupertrend);
+            btnSupertrend.classList.toggle('inactive', !showSupertrend);
+            modSupertrend.style.display = showSupertrend ? "flex" : "none";
+            processIndicators(false);
         });
 
-        document.getElementById("toggle-vsa").addEventListener('click', function() {
-            showVsa = !showVsa;
-            this.classList.toggle('active', showVsa);
-            this.classList.toggle('inactive', !showVsa);
-            processIndicators();
-        });
-
-        document.getElementById("toggle-dash").addEventListener('click', function() {
-            showDash = !showDash;
-            this.classList.toggle('active', showDash);
-            this.classList.toggle('inactive', !showDash);
-            dashboard.classList.toggle('collapsed', !showDash);
-            
-            setTimeout(() => {
-                chart.applyOptions({ 
-                    width: chartContainer.clientWidth, 
-                    height: chartContainer.clientHeight 
-                });
-                resizeCanvas();
-            }, 50);
-        });
-
+        timeframeSelect.addEventListener('change', renderChart);
         renderChart();
     });
     </script>
