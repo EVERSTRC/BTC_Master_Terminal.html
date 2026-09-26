@@ -246,7 +246,6 @@
         resizeObserver.observe(chartContainer);
         chart.timeScale().subscribeVisibleLogicalRangeChange(() => drawOverlay());
 
-        // Algoritmo Supertrend
         function calculateSupertrend(data, period = 10, multiplier = 3.0) {
             if (!data || data.length < period) return { signals: [] };
 
@@ -308,7 +307,6 @@
             return { signals };
         }
 
-        // Análisis VSA
         function analyzeVSAData(candles, period = 20, factor = 1.8) {
             if (!candles || candles.length < period + 1) return { events: [], lastSupport: null, lastResistance: null, lastStats: null };
             let events = [], lastSupport = null, lastResistance = null;
@@ -368,7 +366,6 @@
             };
         }
 
-        // Renderizado de líneas y etiquetas
         function drawOverlay() {
             ctx.clearRect(0, 0, overlay.width, overlay.height);
             if (!showVsa || vsaLinesToDraw.length === 0 || currentCandleData.length === 0) return;
@@ -402,7 +399,6 @@
 
             drawableItems.sort((a, b) => a.originalY - b.originalY);
 
-            // Algoritmo Anticolisión
             const minGap = 16; 
             for (let i = 1; i < drawableItems.length; i++) {
                 let prev = drawableItems[i - 1];
@@ -466,7 +462,6 @@
             if (!currentCandleData || currentCandleData.length === 0) return;
             let allMarkers = [];
 
-            // 1. Supertrend (Flechas TBUY / TSELL)
             if (showSupertrend) {
                 const st = calculateSupertrend(currentCandleData, 10, 3.0);
                 st.signals.forEach(sig => {
@@ -480,7 +475,6 @@
                 });
             }
 
-            // 2. VSA Ballenas (Círculos BUY / SELL + Líneas MTF)
             if (showVsa) {
                 const activeVsa = analyzeVSAData(currentCandleData);
                 activeVsa.events.forEach(e => {
@@ -493,11 +487,16 @@
                     });
                 });
 
-                let lines = [];
                 const activeTF = timeframeSelect.value;
+                const mtfPromises = mtfTimeframes.map(cfg => 
+                    (cfg.tf === activeTF) ? Promise.resolve(currentCandleData) : fetchKlines(cfg.tf, 150)
+                );
 
-                for (let cfg of mtfTimeframes) {
-                    let candles = (cfg.tf === activeTF) ? currentCandleData : await fetchKlines(cfg.tf, 150);
+                const mtfResults = await Promise.all(mtfPromises);
+                let lines = [];
+
+                mtfTimeframes.forEach((cfg, index) => {
+                    const candles = mtfResults[index];
                     const { lastSupport, lastResistance, lastStats } = analyzeVSAData(candles);
 
                     const row = document.getElementById(`row-${cfg.tf}`);
@@ -535,7 +534,7 @@
                             dash: cfg.dash 
                         });
                     }
-                }
+                });
                 vsaLinesToDraw = lines;
             } else {
                 vsaLinesToDraw = [];
@@ -596,7 +595,6 @@
             this.classList.toggle('inactive', !showDash);
             dashboard.classList.toggle('collapsed', !showDash);
             
-            // Forzar actualización de tamaño de gráfica al ocultar/mostrar panel
             setTimeout(() => {
                 chart.applyOptions({ 
                     width: chartContainer.clientWidth, 
