@@ -203,7 +203,6 @@
         const overlay = document.getElementById("labels-overlay");
         const ctx = overlay.getContext("2d");
 
-        // Configuración idéntica a la captura original
         const mtfTimeframes = [
             { tf: '5m', label: '5m', colorRes: '#ff3b30', colorSop: '#007aff', dash: [3, 3] },
             { tf: '15m', label: '15m', colorRes: '#ff3b30', colorSop: '#007aff', dash: [3, 3] },
@@ -239,7 +238,7 @@
         resizeObserver.observe(chartContainer);
         chart.timeScale().subscribeVisibleLogicalRangeChange(() => drawOverlay());
 
-        // Algoritmo Supertrend (Solo marcadores BUY/SELL)
+        // Algoritmo Supertrend
         function calculateSupertrend(data, period = 10, multiplier = 3.0) {
             if (!data || data.length < period) return { signals: [] };
 
@@ -378,7 +377,7 @@
                     ctx.stroke();
                     ctx.restore();
 
-                    // Etiqueta idéntica estilo TradingView
+                    // Etiqueta
                     ctx.font = "bold 10px sans-serif";
                     const textWidth = ctx.measureText(item.title).width;
                     const rectW = textWidth + 10;
@@ -410,7 +409,7 @@
             if (!currentCandleData || currentCandleData.length === 0) return;
             let allMarkers = [];
 
-            // 1. Supertrend (Señales BUY / SELL)
+            // 1. Supertrend (Señales Flecha BUY / SELL)
             if (showSupertrend) {
                 const st = calculateSupertrend(currentCandleData, 10, 3.0);
                 st.signals.forEach(sig => {
@@ -424,8 +423,21 @@
                 });
             }
 
-            // 2. VSA MTF Lines
+            // 2. VSA Ballenas (Círculos BUY / SELL) + Líneas MTF
             if (showVsa) {
+                // Agregar Círculos VSA para el gráfico activo
+                const activeVsa = analyzeVSAData(currentCandleData);
+                activeVsa.events.forEach(e => {
+                    allMarkers.push({
+                        time: e.time,
+                        position: e.type === 'BUY' ? 'belowBar' : 'aboveBar',
+                        color: e.type === 'BUY' ? '#2ea043' : '#f85149',
+                        shape: 'circle',
+                        text: 'BUY'
+                    });
+                });
+
+                // Procesar líneas MTF
                 let lines = [];
                 const activeTF = timeframeSelect.value;
 
@@ -463,6 +475,7 @@
                 vsaLinesToDraw = lines;
             }
 
+            // Ordenar marcadores de manera ascendente
             candlestickSeries.setMarkers(allMarkers.sort((a, b) => a.time - b.time));
             drawOverlay();
         }
