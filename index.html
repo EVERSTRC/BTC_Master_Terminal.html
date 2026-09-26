@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - VSA MTF & Supertrend</title>
+    <title>Bitcoin Trading Terminal - VSA MTF & Supertrend Signals</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -128,6 +128,17 @@
         }
         .dash-val { font-weight: bold; }
 
+        .signal-box {
+            background-color: #161b22;
+            border: 1px dashed #30363d;
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .signal-title { font-size: 10px; color: #8b949e; margin-bottom: 2px; }
+        .signal-val { font-size: 14px; font-weight: bold; }
+
         .vsa-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 4px; }
         .vsa-table th { text-align: left; color: #58a6ff; padding: 4px 0; font-weight: bold; border-bottom: 1px solid #1e2330; }
         .vsa-table td { padding: 4px 0; text-align: right; }
@@ -171,7 +182,19 @@
         </div>
 
         <div id="dashboard">
+            <!-- MÓDULO DE SEÑAL ESTRATÉGICA -->
+            <div class="dash-module">
+                <h4>ÚLTIMA SEÑAL ESTRATÉGICA</h4>
+                <div class="signal-box">
+                    <div class="signal-title">ESTADO DE SEÑAL</div>
+                    <div id="signal-status" class="signal-val badge-neu">ESPERANDO SEÑAL</div>
+                </div>
+                <div class="dash-row"><span>Precio Entrada:</span><span id="signal-price" class="dash-val">--</span></div>
+                <div class="dash-row"><span>Hora Señal:</span><span id="signal-time" class="dash-val">--</span></div>
+            </div>
+
             <div id="dash-module-vsa" class="dash-module">
+                <h4>MATRIZ VOLUMEN MTF</h4>
                 <table class="vsa-table">
                     <thead>
                         <tr><th>Timeframe</th><th>Señal VSA</th><th>Vol. Transado</th><th>% Compra</th><th>% Venta</th></tr>
@@ -187,7 +210,7 @@
             </div>
 
             <div class="dash-module">
-                <h4>CONFIGURACIÓN VSA</h4>
+                <h4>CONFIGURACIÓN SENSORMÉTRICA</h4>
                 <div class="dash-row"><span>Periodo Prom. Vol:</span><span class="dash-val">20</span></div>
                 <div class="dash-row"><span>Mult. Vol Ballena:</span><span class="dash-val">1.8</span></div>
             </div>
@@ -298,7 +321,9 @@
 
                     if (trend[i] !== trend[i - 1]) {
                         signals.push({
+                            index: i,
                             time: data[i].time,
+                            close: data[i].close,
                             type: trend[i] === 1 ? 'TBUY' : 'TSELL'
                         });
                     }
@@ -462,21 +487,51 @@
             if (!currentCandleData || currentCandleData.length === 0) return;
             let allMarkers = [];
 
+            const st = calculateSupertrend(currentCandleData, 10, 3.0);
+            const activeVsa = analyzeVSAData(currentCandleData);
+            let lastStrategicSignal = null;
+
+            // Detección e integración de Señales Combinadas
             if (showSupertrend) {
-                const st = calculateSupertrend(currentCandleData, 10, 3.0);
                 st.signals.forEach(sig => {
+                    // Verificar si existe confirmación VSA cercana
+                    const hasVsaConfirm = activeVsa.events.some(e => Math.abs(e.index - sig.index) <= 3);
+                    const isCombinedSignal = hasVsaConfirm;
+
                     allMarkers.push({
                         time: sig.time,
                         position: sig.type === 'TBUY' ? 'belowBar' : 'aboveBar',
                         color: sig.type === 'TBUY' ? '#089981' : '#f23645',
                         shape: sig.type === 'TBUY' ? 'arrowUp' : 'arrowDown',
-                        text: sig.type
+                        text: isCombinedSignal ? `S-${sig.type === 'TBUY' ? 'BUY' : 'SELL'}` : sig.type
                     });
+
+                    if (isCombinedSignal) {
+                        lastStrategicSignal = {
+                            type: sig.type === 'TBUY' ? 'BUY' : 'SELL',
+                            price: sig.close,
+                            time: new Date(sig.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        };
+                    }
                 });
             }
 
+            // Actualizar módulo del Dashboard
+            const statusElem = document.getElementById("signal-status");
+            const priceElem = document.getElementById("signal-price");
+            const timeElem = document.getElementById("signal-time");
+
+            if (lastStrategicSignal) {
+                statusElem.innerText = `SEÑAL ${lastStrategicSignal.type}`;
+                statusElem.className = `signal-val ${lastStrategicSignal.type === 'BUY' ? 'txt-buy' : 'txt-sell'}`;
+                priceElem.innerText = `$${lastStrategicSignal.price.toFixed(2)}`;
+                timeElem.innerText = lastStrategicSignal.time;
+            } else {
+                statusElem.innerText = "ESPERANDO CONFIRMACIÓN";
+                statusElem.className = "signal-val badge-neu";
+            }
+
             if (showVsa) {
-                const activeVsa = analyzeVSAData(currentCandleData);
                 activeVsa.events.forEach(e => {
                     allMarkers.push({
                         time: e.time,
