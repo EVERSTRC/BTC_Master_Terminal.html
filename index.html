@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - Extended History</title>
+    <title>Bitcoin Trading Terminal - Sessions & Analytics</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -65,15 +65,15 @@
         }
 
         #dashboard { 
-            width: 250px; 
-            min-width: 250px;
+            width: 260px; 
+            min-width: 260px;
             height: 100%;
             background-color: #1e222d; 
             border-left: 1px solid #2a2e39; 
             padding: 6px; 
             display: flex; 
             flex-direction: column; 
-            gap: 5px; 
+            gap: 6px; 
             overflow-y: auto; 
             flex-shrink: 0; 
         }
@@ -85,7 +85,7 @@
             border: 1px solid #2a2e39; 
             display: flex; 
             flex-direction: column; 
-            gap: 3px; 
+            gap: 4px; 
         }
         .dash-module h4 { 
             font-size: 10px; 
@@ -97,13 +97,19 @@
         .dash-row { 
             display: flex; 
             justify-content: space-between; 
-            font-size: 10px; 
+            font-size: 11px; 
             align-items: center; 
         }
         .dash-val { font-weight: bold; }
 
         #timer-progress-container { width: 100%; height: 3px; background-color: #2a2e39; border-radius: 2px; overflow: hidden; margin-top: 2px; }
         #timer-progress { height: 100%; width: 0%; background-color: #2962ff; transition: width 1s linear; }
+
+        .session-legend { display: flex; gap: 8px; font-size: 10px; align-items: center; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .dot-asia { background-color: rgba(255, 215, 0, 0.7); }
+        .dot-london { background-color: rgba(41, 98, 255, 0.7); }
+        .dot-ny { background-color: rgba(242, 54, 69, 0.7); }
     </style>
 </head>
 <body>
@@ -126,7 +132,12 @@
         </div>
 
         <div class="controls-group">
-            <button id="toggle-supertrend" class="active">Supertrend (Filtrado)</button>
+            <div class="session-legend">
+                <span><i class="dot dot-asia"></i> Asia</span>
+                <span><i class="dot dot-london"></i> Lond</span>
+                <span><i class="dot dot-ny"></i> NY</span>
+            </div>
+            <button id="toggle-supertrend" class="active">Supertrend</button>
         </div>
     </div>
 
@@ -146,14 +157,35 @@
             </div>
 
             <div id="dash-module-supertrend" class="dash-module">
-                <h4>Supertrend</h4>
+                <h4>Última Señal</h4>
                 <div class="dash-row">
                     <span>Señal:</span>
                     <span id="dash-st-signal" class="dash-val">--</span>
                 </div>
                 <div class="dash-row">
-                    <span>Precio Señal:</span>
+                    <span>Precio:</span>
                     <span id="dash-st-price" class="dash-val">--</span>
+                </div>
+            </div>
+
+            <div class="dash-module">
+                <h4>Análisis por Sesión</h4>
+                <div class="dash-row">
+                    <span>Asia:</span>
+                    <span id="dash-asia-acc" class="dash-val">--</span>
+                </div>
+                <div class="dash-row">
+                    <span>Londres:</span>
+                    <span id="dash-london-acc" class="dash-val">--</span>
+                </div>
+                <div class="dash-row">
+                    <span>Nueva York:</span>
+                    <span id="dash-ny-acc" class="dash-val">--</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #2a2e39; margin: 3px 0;">
+                <div class="dash-row">
+                    <span>Mejor Sesión:</span>
+                    <span id="dash-best-session" class="dash-val" style="color:#00e676;">--</span>
                 </div>
             </div>
         </div>
@@ -233,6 +265,11 @@
         const dashStSignal = document.getElementById("dash-st-signal");
         const dashStPrice = document.getElementById("dash-st-price");
 
+        const dashAsiaAcc = document.getElementById("dash-asia-acc");
+        const dashLondonAcc = document.getElementById("dash-london-acc");
+        const dashNyAcc = document.getElementById("dash-ny-acc");
+        const dashBestSession = document.getElementById("dash-best-session");
+
         let wsConnection = null;
         let currentCandleData = [];
         let timerInterval = null;
@@ -249,6 +286,14 @@
         const candlestickSeries = chart.addSeries 
             ? chart.addSeries(LightweightCharts.CandlestickSeries, { upColor: '#089981', downColor: '#f23645', borderVisible: false, wickUpColor: '#089981', wickDownColor: '#f23645' })
             : chart.addCandlestickSeries({ upColor: '#089981', downColor: '#f23645', borderVisible: false, wickUpColor: '#089981', wickDownColor: '#f23645' });
+
+        const sessionSeries = chart.addSeries 
+            ? chart.addSeries(LightweightCharts.HistogramSeries, { priceFormat: { type: 'volume' }, priceScaleId: '' })
+            : chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '' });
+
+        sessionSeries.priceScale().applyOptions({
+            scaleMargins: { top: 0, bottom: 0 }
+        });
 
         const resizeObserver = new ResizeObserver(entries => {
             if (!entries || entries.length === 0) return;
@@ -287,9 +332,38 @@
             timerInterval = setInterval(updateTimer, 1000);
         }
 
-        // --- ALGORITMO SUPERTREND FILTRADO ---
+        // --- CÁLCULO Y DIBUJO DE SESIONES ---
+        function getSessionName(utcHour) {
+            // Asia: 00:00 - 08:00 UTC
+            if (utcHour >= 0 && utcHour < 8) return "ASIA";
+            // Londres: 07:00 - 15:00 UTC (Solafe con Asia 7-8)
+            if (utcHour >= 8 && utcHour < 13) return "LONDRES";
+            // Nueva York: 13:00 - 21:00 UTC
+            if (utcHour >= 13 && utcHour < 21) return "NY";
+            return "ASIA";
+        }
+
+        function renderSessionBackgrounds(candles) {
+            if (!candles || candles.length === 0) return;
+            const sessionHistogram = candles.map(c => {
+                const date = new Date(c.time * 1000);
+                const utcHour = date.getUTCHours();
+                const session = getSessionName(utcHour);
+
+                let color = "transparent";
+                if (session === "ASIA") color = "rgba(255, 215, 0, 0.06)";
+                else if (session === "LONDRES") color = "rgba(41, 98, 255, 0.08)";
+                else if (session === "NY") color = "rgba(242, 54, 69, 0.08)";
+
+                return { time: c.time, value: 1, color: color };
+            });
+
+            sessionSeries.setData(sessionHistogram);
+        }
+
+        // --- ALGORITMO SUPERTREND FILTRADO Y ESTADÍSTICAS POR SESIÓN ---
         function getSupertrendMarkers(candles, atrPeriods = 14, multiplier = 3.5) {
-            if (!candles || candles.length < atrPeriods + 1) return { stMarkers: [], lastSignal: null };
+            if (!candles || candles.length < atrPeriods + 1) return { stMarkers: [], lastSignal: null, allSignals: [] };
             const len = candles.length;
             const tr = new Float64Array(len);
             tr[0] = candles[0].high - candles[0].low;
@@ -328,6 +402,7 @@
             }
 
             const stMarkers = [];
+            const allSignals = [];
             let lastSignal = null;
 
             let rollingVol = 0;
@@ -340,17 +415,67 @@
                 const hasHighVolume = (candles[i].volume || 0) > (avgVol * 1.2);
 
                 if (trend[i] === 1 && trend[i - 1] === -1 && hasHighVolume) {
+                    const sig = { type: 'BUY', price: candles[i].close, time: candles[i].time, index: i };
                     stMarkers.push({ time: candles[i].time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'ST BUY' });
-                    lastSignal = { type: 'BUY', price: candles[i].close, time: candles[i].time };
+                    lastSignal = sig;
+                    allSignals.push(sig);
                 } else if (trend[i] === -1 && trend[i - 1] === 1 && hasHighVolume) {
+                    const sig = { type: 'SELL', price: candles[i].close, time: candles[i].time, index: i };
                     stMarkers.push({ time: candles[i].time, position: 'aboveBar', color: '#ff1744', shape: 'arrowDown', text: 'ST SELL' });
-                    lastSignal = { type: 'SELL', price: candles[i].close, time: candles[i].time };
+                    lastSignal = sig;
+                    allSignals.push(sig);
                 }
             }
-            return { stMarkers, lastSignal };
+            return { stMarkers, lastSignal, allSignals };
         }
 
-        // FUNCIÓN CREADA PARA CARGAR HISTORIAL EXTENDIDO (1500 VELAS VIA PAGINACIÓN)
+        // EVALUADOR DE EFECTIVIDAD POR SESIÓN
+        function analyzeSessions(candles, signals) {
+            const stats = {
+                ASIA: { total: 0, win: 0 },
+                LONDRES: { total: 0, win: 0 },
+                NY: { total: 0, win: 0 }
+            };
+
+            for (let i = 0; i < signals.length; i++) {
+                const sig = signals[i];
+                const date = new Date(sig.time * 1000);
+                const session = getSessionName(date.getUTCHours());
+
+                // Analizar el resultado revisando la tendencia en las siguientes 10 velas
+                const futureIdx = Math.min(sig.index + 10, candles.length - 1);
+                if (futureIdx <= sig.index) continue;
+
+                const priceChange = candles[futureIdx].close - sig.price;
+                const isWin = (sig.type === "BUY" && priceChange > 0) || (sig.type === "SELL" && priceChange < 0);
+
+                stats[session].total++;
+                if (isWin) stats[session].win++;
+            }
+
+            function getRate(sessionKey) {
+                const s = stats[sessionKey];
+                return s.total > 0 ? Math.round((s.win / s.total) * 100) : 0;
+            }
+
+            const rateAsia = getRate("ASIA");
+            const rateLondon = getRate("LONDRES");
+            const rateNY = getRate("NY");
+
+            dashAsiaAcc.innerText = `${rateAsia}% (${stats.ASIA.win}/${stats.ASIA.total})`;
+            dashLondonAcc.innerText = `${rateLondon}% (${stats.LONDRES.win}/${stats.LONDRES.total})`;
+            dashNyAcc.innerText = `${rateNY}% (${stats.NY.win}/${stats.NY.total})`;
+
+            let best = "N/A";
+            let maxRate = -1;
+
+            if (rateAsia > maxRate && stats.ASIA.total > 2) { maxRate = rateAsia; best = "ASIA"; }
+            if (rateLondon > maxRate && stats.LONDRES.total > 2) { maxRate = rateLondon; best = "LONDRES"; }
+            if (rateNY > maxRate && stats.NY.total > 2) { maxRate = rateNY; best = "NUEVA YORK"; }
+
+            dashBestSession.innerText = best;
+        }
+
         async function fetchExtendedKlines(interval, totalTarget = 1500) {
             const is1s = interval === "1s";
             const endpoint = is1s ? 'uiKlines' : 'klines';
@@ -372,23 +497,24 @@
                     time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
                 }));
 
-                // La respuesta viene ordenada cronológicamente; la unimos con la acumulada
                 allCandles = batch.concat(allCandles);
-                endTime = data[0][0] - 1; // Ajustamos endTime a justo antes de la primera vela recibida
+                endTime = data[0][0] - 1;
 
                 if (data.length < fetchLimit) break;
             }
 
-            // Eliminar duplicados si los hubiera y ordenar correctamente
             return allCandles.sort((a, b) => a.time - b.time);
         }
 
         function processIndicators(isInitialLoad = false) {
             if (!currentCandleData || currentCandleData.length === 0) return;
 
+            renderSessionBackgrounds(currentCandleData);
+
             if (showSupertrend) {
-                const { stMarkers, lastSignal } = getSupertrendMarkers(currentCandleData);
+                const { stMarkers, lastSignal, allSignals } = getSupertrendMarkers(currentCandleData);
                 candlestickSeries.setMarkers(stMarkers);
+                analyzeSessions(currentCandleData, allSignals);
 
                 if (lastSignal) {
                     dashStSignal.innerText = lastSignal.type;
@@ -411,7 +537,7 @@
 
         async function renderChart() {
             statusEl.style.display = "block";
-            statusEl.innerText = "Cargando 1500 velas...";
+            statusEl.innerText = "Cargando datos...";
 
             const selectedInterval = timeframeSelect.value;
             startCandleTimer(selectedInterval);
