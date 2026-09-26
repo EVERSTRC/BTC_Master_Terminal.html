@@ -292,7 +292,7 @@
                     if (trend[i] !== trend[i - 1]) {
                         signals.push({
                             time: data[i].time,
-                            type: trend[i] === 1 ? 'BUY' : 'SELL'
+                            type: trend[i] === 1 ? 'TBUY' : 'TSELL'
                         });
                     }
                 }
@@ -353,23 +353,22 @@
             };
         }
 
-        // RENDERIZADO exacto del original:
-        // - Inicia exactamente en la vela donde nació la ballena (startTime)
-        // - Termina en la última vela con su etiqueta flotante
-        // - Anticolisión de etiquetas si están muy juntas
+        // Renderizado de líneas y etiquetas con holgura/margen a la derecha de las velas
         function drawOverlay() {
             ctx.clearRect(0, 0, overlay.width, overlay.height);
             if (!showVsa || vsaLinesToDraw.length === 0 || currentCandleData.length === 0) return;
 
             const timeScale = chart.timeScale();
             const lastCandle = currentCandleData[currentCandleData.length - 1];
-            let endX = timeScale.timeToCoordinate(lastCandle.time) || (overlay.width - 60);
+            let candleX = timeScale.timeToCoordinate(lastCandle.time) || (overlay.width - 90);
+            
+            // Separación deliberada entre la última vela y la caja de la etiqueta
+            let labelOffsetX = candleX + 25; 
 
             let drawableItems = [];
             vsaLinesToDraw.forEach(item => {
                 const y = candlestickSeries.priceToCoordinate(item.price);
                 if (y !== null && y >= 0 && y <= overlay.height) {
-                    // Si hay tiempo de inicio se calcula la coordenada X de esa vela; si la vela no está en pantalla, usa 0
                     let startX = 0;
                     if (item.startTime) {
                         const calculatedX = timeScale.timeToCoordinate(item.startTime);
@@ -387,10 +386,9 @@
                 }
             });
 
-            // Ordenar por coordenada Y para anticolisión
             drawableItems.sort((a, b) => a.originalY - b.originalY);
 
-            // Algoritmo Anticolisión
+            // Algoritmo Anticolisión (espaciado vertical)
             const minGap = 16; 
             for (let i = 1; i < drawableItems.length; i++) {
                 let prev = drawableItems[i - 1];
@@ -400,18 +398,18 @@
                 }
             }
 
-            // Dibujar cada línea exactamente desde su origen (vela ballena) hasta la vela actual
             drawableItems.forEach(item => {
                 ctx.save();
                 ctx.strokeStyle = item.color;
                 ctx.lineWidth = 1.5;
                 if (item.dash && item.dash.length > 0) ctx.setLineDash(item.dash);
 
+                // Dibujar línea principal hasta el área de la etiqueta con holgura
                 ctx.beginPath();
                 ctx.moveTo(item.startX, item.originalY);
-                ctx.lineTo(endX, item.originalY);
+                ctx.lineTo(labelOffsetX, item.originalY);
                 if (item.originalY !== item.adjustedY) {
-                    ctx.lineTo(endX + 3, item.adjustedY);
+                    ctx.lineTo(labelOffsetX + 3, item.adjustedY);
                 }
                 ctx.stroke();
                 ctx.restore();
@@ -424,13 +422,13 @@
 
                 ctx.fillStyle = item.color;
                 ctx.beginPath();
-                ctx.roundRect(endX + 3, item.adjustedY - (rectH / 2), rectW, rectH, 3);
+                ctx.roundRect(labelOffsetX + 3, item.adjustedY - (rectH / 2), rectW, rectH, 3);
                 ctx.fill();
 
                 ctx.fillStyle = "#ffffff";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.fillText(item.title, endX + 3 + (rectW / 2), item.adjustedY);
+                ctx.fillText(item.title, labelOffsetX + 3 + (rectW / 2), item.adjustedY);
             });
         }
 
@@ -447,15 +445,15 @@
             if (!currentCandleData || currentCandleData.length === 0) return;
             let allMarkers = [];
 
-            // 1. Supertrend (Flechas BUY / SELL)
+            // 1. Supertrend (Flechas TBUY / TSELL)
             if (showSupertrend) {
                 const st = calculateSupertrend(currentCandleData, 10, 3.0);
                 st.signals.forEach(sig => {
                     allMarkers.push({
                         time: sig.time,
-                        position: sig.type === 'BUY' ? 'belowBar' : 'aboveBar',
-                        color: sig.type === 'BUY' ? '#089981' : '#f23645',
-                        shape: sig.type === 'BUY' ? 'arrowUp' : 'arrowDown',
+                        position: sig.type === 'TBUY' ? 'belowBar' : 'aboveBar',
+                        color: sig.type === 'TBUY' ? '#089981' : '#f23645',
+                        shape: sig.type === 'TBUY' ? 'arrowUp' : 'arrowDown',
                         text: sig.type
                     });
                 });
