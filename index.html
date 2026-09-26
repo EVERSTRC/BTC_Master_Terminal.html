@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Footprint & VSA Terminal</title>
+    <title>Bitcoin Trading Terminal - VSA MTF & Supertrend</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -97,10 +97,12 @@
             flex-direction: column; 
             gap: 8px; 
             overflow-y: auto; 
-            transition: all 0.3s ease;
+            transition: margin-right 0.3s ease, width 0.3s ease;
         }
 
-        #dashboard.collapsed { display: none; }
+        #dashboard.collapsed {
+            display: none;
+        }
 
         .dash-module { 
             background-color: #0b0e14; 
@@ -118,7 +120,12 @@
             letter-spacing: 0.5px; 
             margin-bottom: 4px;
         }
-        .dash-row { display: flex; justify-content: space-between; font-size: 11px; align-items: center; }
+        .dash-row { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 11px; 
+            align-items: center; 
+        }
         .dash-val { font-weight: bold; }
 
         .vsa-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 4px; }
@@ -151,8 +158,8 @@
         </div>
 
         <div class="controls-group">
-            <button id="toggle-vsa" class="active">Footprint & Ballenas</button>
-            <button id="toggle-supertrend" class="active">Señales Supertrend</button>
+            <button id="toggle-vsa" class="active">S/R Ballenas VSA</button>
+            <button id="toggle-supertrend" class="active">Señales BUY/SELL</button>
             <button id="toggle-dash" class="active">Dashboard MTF</button>
         </div>
     </div>
@@ -170,17 +177,17 @@
                         <tr><th>Timeframe</th><th>Señal VSA</th><th>Vol. Transado</th><th>% Compra</th><th>% Venta</th></tr>
                     </thead>
                     <tbody id="vsa-mtf-tbody">
-                        <tr id="row-5m"><td>5 Minutos</td><td><span class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr id="row-15m"><td>15 Minutos</td><td><span class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr id="row-1h"><td>1 Hora</td><td><span class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr id="row-4h"><td>4 Horas</td><td><span class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
-                        <tr id="row-1d"><td>1 Diario</td><td><span class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-5m"><td>5 Minutos</td><td><span id="badge-5m" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-15m"><td>15 Minutos</td><td><span id="badge-15m" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-1h"><td>1 Hora</td><td><span id="badge-1h" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-4h"><td>4 Horas</td><td><span id="badge-4h" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
+                        <tr id="row-1d"><td>1 Diario</td><td><span id="badge-1d" class="badge-neu">--</span></td><td>--</td><td class="txt-buy">--</td><td class="txt-sell">--</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="dash-module">
-                <h4>CONFIGURACIÓN FOOTPRINT / VSA</h4>
+                <h4>CONFIGURACIÓN VSA</h4>
                 <div class="dash-row"><span>Periodo Prom. Vol:</span><span class="dash-val">20</span></div>
                 <div class="dash-row"><span>Mult. Vol Ballena:</span><span class="dash-val">1.8</span></div>
             </div>
@@ -190,7 +197,6 @@
     <script>
     document.addEventListener("DOMContentLoaded", function () {
         let currentCandleData = [];
-        let footprintZones = []; 
         let vsaLinesToDraw = [];
         let wsConnection = null;
 
@@ -240,6 +246,7 @@
         resizeObserver.observe(chartContainer);
         chart.timeScale().subscribeVisibleLogicalRangeChange(() => drawOverlay());
 
+        // Algoritmo Supertrend
         function calculateSupertrend(data, period = 10, multiplier = 3.0) {
             if (!data || data.length < period) return { signals: [] };
 
@@ -266,6 +273,7 @@
 
             let upperBand = new Array(data.length).fill(0);
             let lowerBand = new Array(data.length).fill(0);
+            let superTrend = new Array(data.length).fill(0);
             let trend = new Array(data.length).fill(1);
             let signals = [];
 
@@ -277,6 +285,7 @@
                 if (i === period - 1) {
                     upperBand[i] = basicUpper;
                     lowerBand[i] = basicLower;
+                    superTrend[i] = basicLower;
                     trend[i] = 1;
                 } else {
                     lowerBand[i] = (basicLower > lowerBand[i - 1] || data[i - 1].close < lowerBand[i - 1]) ? basicLower : lowerBand[i - 1];
@@ -291,8 +300,7 @@
                     if (trend[i] !== trend[i - 1]) {
                         signals.push({
                             time: data[i].time,
-                            type: trend[i] === 1 ? 'TBUY' : 'TSELL',
-                            price: trend[i] === 1 ? lowerBand[i] : upperBand[i]
+                            type: trend[i] === 1 ? 'TBUY' : 'TSELL'
                         });
                     }
                 }
@@ -300,9 +308,10 @@
             return { signals };
         }
 
+        // Análisis VSA
         function analyzeVSAData(candles, period = 20, factor = 1.8) {
-            if (!candles || candles.length < period + 1) return { events: [], zones: [], lastSupport: null, lastResistance: null, lastStats: null };
-            let events = [], zones = [], lastSupport = null, lastResistance = null;
+            if (!candles || candles.length < period + 1) return { events: [], lastSupport: null, lastResistance: null, lastStats: null };
+            let events = [], lastSupport = null, lastResistance = null;
 
             let totalVol = 0, totalBuy = 0, totalSell = 0;
 
@@ -333,24 +342,10 @@
                     const ev = { index: i, time: candle.time, type: 'BUY', price: candle.low };
                     events.push(ev);
                     lastSupport = ev;
-                    
-                    zones.push({
-                        time: candle.time,
-                        highPrice: Math.min(candle.open, candle.close),
-                        lowPrice: candle.low,
-                        type: 'BUY_ZONE'
-                    });
                 } else if (isSell) {
                     const ev = { index: i, time: candle.time, type: 'SELL', price: candle.high };
                     events.push(ev);
                     lastResistance = ev;
-
-                    zones.push({
-                        time: candle.time,
-                        highPrice: candle.high,
-                        lowPrice: Math.max(candle.open, candle.close),
-                        type: 'SELL_ZONE'
-                    });
                 }
             }
 
@@ -367,53 +362,21 @@
 
             return { 
                 events, 
-                zones,
                 lastSupport, 
                 lastResistance, 
                 lastStats: { signal, vol: volFormated, pBuy, pSell } 
             };
         }
 
+        // Renderizado de líneas y etiquetas
         function drawOverlay() {
             ctx.clearRect(0, 0, overlay.width, overlay.height);
-            const timeScale = chart.timeScale();
-
-            // Bloques footprint pintados dentro de las velas
-            if (showVsa && footprintZones.length > 0) {
-                footprintZones.forEach(zone => {
-                    const x = timeScale.timeToCoordinate(zone.time);
-                    if (x === null || x < 0 || x > overlay.width) return;
-
-                    const yHigh = candlestickSeries.priceToCoordinate(zone.highPrice);
-                    const yLow = candlestickSeries.priceToCoordinate(zone.lowPrice);
-
-                    if (yHigh !== null && yLow !== null) {
-                        const height = Math.max(Math.abs(yLow - yHigh), 4);
-                        const topY = Math.min(yHigh, yLow);
-                        const width = 10; 
-
-                        ctx.save();
-                        if (zone.type === 'BUY_ZONE') {
-                            ctx.fillStyle = "rgba(46, 160, 67, 0.85)";
-                            ctx.strokeStyle = "#3fb950";
-                        } else {
-                            ctx.fillStyle = "rgba(248, 81, 73, 0.85)";
-                            ctx.strokeStyle = "#f85149";
-                        }
-
-                        ctx.fillRect(x - (width / 2), topY, width, height);
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(x - (width / 2), topY, width, height);
-                        ctx.restore();
-                    }
-                });
-            }
-
-            // Líneas S/R VSA y Etiquetas MTF
             if (!showVsa || vsaLinesToDraw.length === 0 || currentCandleData.length === 0) return;
 
+            const timeScale = chart.timeScale();
             const lastCandle = currentCandleData[currentCandleData.length - 1];
             let candleX = timeScale.timeToCoordinate(lastCandle.time) || (overlay.width - 90);
+            
             let labelOffsetX = candleX + 25; 
 
             let drawableItems = [];
@@ -423,7 +386,9 @@
                     let startX = 0;
                     if (item.startTime) {
                         const calculatedX = timeScale.timeToCoordinate(item.startTime);
-                        if (calculatedX !== null) startX = Math.max(0, calculatedX);
+                        if (calculatedX !== null) {
+                            startX = Math.max(0, calculatedX);
+                        }
                     }
 
                     drawableItems.push({
@@ -437,6 +402,7 @@
 
             drawableItems.sort((a, b) => a.originalY - b.originalY);
 
+            // Algoritmo Anticolisión
             const minGap = 16; 
             for (let i = 1; i < drawableItems.length; i++) {
                 let prev = drawableItems[i - 1];
@@ -490,7 +456,8 @@
                 return data.map(d => ({
                     time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
                 }));
-            } catch (e) {
+            } catch (err) {
+                console.error("Error fetching klines:", err);
                 return [];
             }
         }
@@ -499,7 +466,7 @@
             if (!currentCandleData || currentCandleData.length === 0) return;
             let allMarkers = [];
 
-            // 1. Flechas Supertrend
+            // 1. Supertrend (Flechas TBUY / TSELL)
             if (showSupertrend) {
                 const st = calculateSupertrend(currentCandleData, 10, 3.0);
                 st.signals.forEach(sig => {
@@ -513,12 +480,9 @@
                 });
             }
 
-            // 2. Círculos VSA Ballenas + Zonas Footprint
+            // 2. VSA Ballenas (Círculos BUY / SELL + Líneas MTF)
             if (showVsa) {
                 const activeVsa = analyzeVSAData(currentCandleData);
-                footprintZones = activeVsa.zones;
-
-                // Reactivar los círculos flotantes de VSA Ballenas
                 activeVsa.events.forEach(e => {
                     allMarkers.push({
                         time: e.time,
@@ -546,7 +510,7 @@
                         } else {
                             cellSignal.innerHTML = '<span class="badge-neu">NEUTRAL</span>';
                         }
-
+                        
                         row.cells[2].innerText = lastStats.vol;
                         row.cells[3].innerText = lastStats.pBuy;
                         row.cells[4].innerText = lastStats.pSell;
@@ -574,7 +538,6 @@
                 }
                 vsaLinesToDraw = lines;
             } else {
-                footprintZones = [];
                 vsaLinesToDraw = [];
             }
 
@@ -633,8 +596,12 @@
             this.classList.toggle('inactive', !showDash);
             dashboard.classList.toggle('collapsed', !showDash);
             
+            // Forzar actualización de tamaño de gráfica al ocultar/mostrar panel
             setTimeout(() => {
-                chart.applyOptions({ width: chartContainer.clientWidth, height: chartContainer.clientHeight });
+                chart.applyOptions({ 
+                    width: chartContainer.clientWidth, 
+                    height: chartContainer.clientHeight 
+                });
                 resizeCanvas();
             }, 50);
         });
