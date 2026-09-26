@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - NY & London R:R Analytics</title>
+    <title>Bitcoin Trading Terminal - Instant Signal Supertrend R:R</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -107,7 +107,6 @@
 
         .session-legend { display: flex; gap: 8px; font-size: 10px; align-items: center; }
         .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-        .dot-asia { background-color: rgba(255, 215, 0, 0.4); }
         .dot-london { background-color: rgba(41, 98, 255, 0.7); }
         .dot-ny { background-color: rgba(242, 54, 69, 0.7); }
     </style>
@@ -156,9 +155,9 @@
             </div>
 
             <div id="dash-module-supertrend" class="dash-module">
-                <h4>Última Señal (Londres/NY)</h4>
+                <h4>Entrada Instantánea (Lond/NY)</h4>
                 <div class="dash-row">
-                    <span>Señal / Entrada:</span>
+                    <span>Señal Instantánea:</span>
                     <span id="dash-st-signal" class="dash-val">--</span>
                 </div>
                 <div class="dash-row">
@@ -265,7 +264,7 @@
         function sendTelegramAlert(signalType, price, timeframe) {
             if (!TELEGRAM_CONFIG.enabled || !TELEGRAM_CONFIG.username) return;
             const icon = signalType === "BUY" ? "🟢🚀" : "🔴🐻";
-            const message = `ALERT SUPERTREND BTCUSDT (Lond/NY)\n\nSeñal: ${signalType} ${icon}\nPrecio Entrada: $${price.toFixed(2)}\nTimeframe: ${timeframe}`;
+            const message = `⚡ ALERTA INSTANTÁNEA SUPERTREND BTCUSDT\n\nSeñal: ${signalType} ${icon}\nPrecio Entrada Inmediata: $${price.toFixed(2)}\nTimeframe: ${timeframe}`;
             const userClean = TELEGRAM_CONFIG.username.replace("@", "");
             const encodedMsg = encodeURIComponent(message);
             fetch(`https://api.callmebot.com/text.php?user=@${userClean}&text=${encodedMsg}`, { mode: 'no-cors' })
@@ -274,7 +273,7 @@
 
         function evaluateSupertrendAlert(lastSignal, timeframe) {
             if (!lastSignal || !lastSignal.time) return;
-            if (lastSignal.time !== lastNotifiedSignalTime && lastSignal.type !== lastNotifiedSignalType) {
+            if (lastSignal.time !== lastNotifiedSignalTime || lastSignal.type !== lastNotifiedSignalType) {
                 lastNotifiedSignalTime = lastSignal.time;
                 lastNotifiedSignalType = lastSignal.type;
                 playBeepSound(lastSignal.type);
@@ -368,17 +367,15 @@
             timerInterval = setInterval(updateTimer, 1000);
         }
 
-        // Determina el nombre de la sesión
         function getSessionName(utcHour) {
             if (utcHour >= 8 && utcHour < 13) return "LONDRES";
             if (utcHour >= 13 && utcHour < 21) return "NY";
             return "ASIA";
         }
 
-        // Valida si la vela corresponde a un día laboral (Lunes=1 a Viernes=5) y a Londres o NY
         function isValidTradeTime(timeInSeconds) {
             const date = new Date(timeInSeconds * 1000);
-            const dayOfWeek = date.getUTCDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+            const dayOfWeek = date.getUTCDay(); 
             if (dayOfWeek === 0 || dayOfWeek === 6) return false;
 
             const utcHour = date.getUTCHours();
@@ -407,6 +404,7 @@
             sessionSeries.setData(sessionHistogram);
         }
 
+        // LÓGICA DE Detección Instantánea (Apenas la vela toca/cruza el Supertrend)
         function getSupertrendMarkers(candles, atrPeriods = 14, multiplier = 3.5) {
             if (!candles || candles.length < atrPeriods + 1) return { stMarkers: [], lastSignal: null, allSignals: [] };
             const len = candles.length;
@@ -428,7 +426,6 @@
             for (let i = atrPeriods; i < len; i++) atr[i] = (atr[i - 1] * (atrPeriods - 1) + tr[i]) / atrPeriods;
 
             const up = new Float64Array(len), dn = new Float64Array(len), trend = new Int32Array(len);
-            let currentTrend = 1;
 
             for (let i = 0; i < len; i++) {
                 const src = (candles[i].high + candles[i].low) / 2;
@@ -439,42 +436,37 @@
                 up[i] = candles[i - 1].close > up[i - 1] ? Math.max(basicUp, up[i - 1]) : basicUp;
                 dn[i] = candles[i - 1].close < dn[i - 1] ? Math.min(basicDn, dn[i - 1]) : basicDn;
 
-                if (trend[i - 1] === -1 && candles[i].close > dn[i - 1]) currentTrend = 1;
-                else if (trend[i - 1] === 1 && candles[i].close < up[i - 1]) currentTrend = -1;
-                else currentTrend = trend[i - 1];
-
-                trend[i] = currentTrend;
+                // Evaluación instantánea sin esperar el cierre
+                if (trend[i - 1] === -1 && candles[i].high >= dn[i - 1]) {
+                    trend[i] = 1;
+                } else if (trend[i - 1] === 1 && candles[i].low <= up[i - 1]) {
+                    trend[i] = -1;
+                } else {
+                    trend[i] = trend[i - 1];
+                }
             }
 
             const stMarkers = [];
             const allSignals = [];
             let lastSignal = null;
 
-            let rollingVol = 0;
-            for (let i = 0; i < 20 && i < len; i++) rollingVol += (candles[i].volume || 1);
-
-            for (let i = 20; i < len; i++) {
-                rollingVol += (candles[i].volume || 1) - (candles[i - 20].volume || 1);
-                const avgVol = rollingVol / 20;
-                
-                const hasHighVolume = (candles[i].volume || 0) > (avgVol * 1.2);
-                
-                // FILTRO APLICADO: Solo evaluar si ocurre de Lunes a Viernes y en sesión Londres o NY
+            for (let i = atrPeriods + 1; i < len; i++) {
                 const validTime = isValidTradeTime(candles[i].time);
 
-                if (trend[i] === 1 && trend[i - 1] === -1 && hasHighVolume) {
+                // Disparo de entrada instantáneo al precio actual de la vela activa
+                if (trend[i] === 1 && trend[i - 1] === -1) {
                     if (validTime) {
-                        const stVal = up[i];
-                        const sig = { type: 'BUY', price: candles[i].close, stVal: stVal, time: candles[i].time, index: i };
-                        stMarkers.push({ time: candles[i].time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'ST BUY' });
+                        const entryPrice = candles[i].close; // Toma el precio exacto en directo
+                        const sig = { type: 'BUY', price: entryPrice, stVal: up[i], time: candles[i].time, index: i };
+                        stMarkers.push({ time: candles[i].time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'BUY NOW' });
                         lastSignal = sig;
                         allSignals.push(sig);
                     }
-                } else if (trend[i] === -1 && trend[i - 1] === 1 && hasHighVolume) {
+                } else if (trend[i] === -1 && trend[i - 1] === 1) {
                     if (validTime) {
-                        const stVal = dn[i];
-                        const sig = { type: 'SELL', price: candles[i].close, stVal: stVal, time: candles[i].time, index: i };
-                        stMarkers.push({ time: candles[i].time, position: 'aboveBar', color: '#ff1744', shape: 'arrowDown', text: 'ST SELL' });
+                        const entryPrice = candles[i].close; // Toma el precio exacto en directo
+                        const sig = { type: 'SELL', price: entryPrice, stVal: dn[i], time: candles[i].time, index: i };
+                        stMarkers.push({ time: candles[i].time, position: 'aboveBar', color: '#ff1744', shape: 'arrowDown', text: 'SELL NOW' });
                         lastSignal = sig;
                         allSignals.push(sig);
                     }
@@ -511,7 +503,7 @@
                 let hitTp1 = false, hitTp2 = false, hitTp3 = false;
 
                 const maxIndex = Math.min(sig.index + 30, candles.length);
-                for (let i = sig.index + 1; i < maxIndex; i++) {
+                for (let i = sig.index; i < maxIndex; i++) {
                     const candle = candles[i];
 
                     if (isBuy) {
@@ -722,7 +714,8 @@
                     }
                     if (currentCandleData.length > 1500) currentCandleData.shift();
                     
-                    if (k.x) processIndicators(false);
+                    // Disparo inmediato por cada tick recibido del WebSocket
+                    processIndicators(false);
                 }
             };
         }
@@ -730,7 +723,7 @@
         btnSupertrend.addEventListener('click', () => {
             showSupertrend = !showSupertrend;
             btnSupertrend.classList.toggle('active', showSupertrend);
-            btnSupertrend.classList.toggle('inactive', showSupertrend);
+            btnSupertrend.classList.toggle('inactive', !showSupertrend);
             modSupertrend.style.display = showSupertrend ? "flex" : "none";
             processIndicators(false);
         });
