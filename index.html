@@ -353,46 +353,76 @@
             };
         }
 
+        // DIBUJO DE OVERLAY Y ALGORITMO ANTICOLISIÓN DE ETIQUETAS
         function drawOverlay() {
             ctx.clearRect(0, 0, overlay.width, overlay.height);
             if (!showVsa || vsaLinesToDraw.length === 0 || currentCandleData.length === 0) return;
 
             const timeScale = chart.timeScale();
-            const lastCandle = currentCandleData[currentCandleData.length - 1];
-            let lastCandleX = timeScale.timeToCoordinate(lastCandle.time) || (overlay.width - 60);
+            const labelColX = overlay.width - 70; // Alineación fija a la derecha
 
+            // 1. Obtener coordenadas Y de cada línea
+            let drawableItems = [];
             vsaLinesToDraw.forEach(item => {
                 const y = candlestickSeries.priceToCoordinate(item.price);
                 if (y !== null && y >= 0 && y <= overlay.height) {
                     let startX = item.startTime ? Math.max(0, timeScale.timeToCoordinate(item.startTime) || 0) : 0;
-                    
-                    ctx.save();
-                    ctx.strokeStyle = item.color;
-                    ctx.lineWidth = 2;
-                    if (item.dash && item.dash.length > 0) ctx.setLineDash(item.dash);
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(startX, y);
-                    ctx.lineTo(lastCandleX, y);
-                    ctx.stroke();
-                    ctx.restore();
-
-                    // Etiqueta
-                    ctx.font = "bold 10px sans-serif";
-                    const textWidth = ctx.measureText(item.title).width;
-                    const rectW = textWidth + 10;
-                    const rectH = 16;
-                    
-                    ctx.fillStyle = item.color;
-                    ctx.beginPath();
-                    ctx.roundRect(lastCandleX + 5, y - (rectH / 2), rectW, rectH, 3);
-                    ctx.fill();
-
-                    ctx.fillStyle = "#ffffff";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(item.title, lastCandleX + 5 + (rectW / 2), y);
+                    drawableItems.push({
+                        ...item,
+                        originalY: y,
+                        adjustedY: y,
+                        startX: startX
+                    });
                 }
+            });
+
+            // 2. Ordenar por precio Y (de arriba hacia abajo)
+            drawableItems.sort((a, b) => a.originalY - b.originalY);
+
+            // 3. Algoritmo Anticolisión: Ajustar Y para evitar solapamiento
+            const labelHeight = 15;
+            const minGap = 16; 
+            for (let i = 1; i < drawableItems.length; i++) {
+                let prev = drawableItems[i - 1];
+                let curr = drawableItems[i];
+                if (curr.adjustedY - prev.adjustedY < minGap) {
+                    curr.adjustedY = prev.adjustedY + minGap;
+                }
+            }
+
+            // 4. Renderizar Líneas y Etiquetas perfectamente separadas
+            drawableItems.forEach(item => {
+                ctx.save();
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = 1.5;
+                if (item.dash && item.dash.length > 0) ctx.setLineDash(item.dash);
+
+                // Dibujar Línea hasta el borde del Label
+                ctx.beginPath();
+                ctx.moveTo(item.startX, item.originalY);
+                ctx.lineTo(labelColX, item.originalY);
+                if (item.originalY !== item.adjustedY) {
+                    // Pequeña diagonal si el label se desplazó
+                    ctx.lineTo(labelColX + 4, item.adjustedY);
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                // Dibujar Etiqueta redondeada sin superposición
+                ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, Roboto, sans-serif";
+                const textWidth = ctx.measureText(item.title).width;
+                const rectW = textWidth + 8;
+                const rectH = labelHeight;
+
+                ctx.fillStyle = item.color;
+                ctx.beginPath();
+                ctx.roundRect(labelColX + 4, item.adjustedY - (rectH / 2), rectW, rectH, 3);
+                ctx.fill();
+
+                ctx.fillStyle = "#ffffff";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(item.title, labelColX + 4 + (rectW / 2), item.adjustedY);
             });
         }
 
@@ -409,7 +439,7 @@
             if (!currentCandleData || currentCandleData.length === 0) return;
             let allMarkers = [];
 
-            // 1. Supertrend (Señales Flecha BUY / SELL)
+            // 1. Supertrend (Flechas BUY / SELL)
             if (showSupertrend) {
                 const st = calculateSupertrend(currentCandleData, 10, 3.0);
                 st.signals.forEach(sig => {
@@ -423,9 +453,8 @@
                 });
             }
 
-            // 2. VSA Ballenas (Círculos BUY / SELL) + Líneas MTF
+            // 2. VSA Ballenas (Círculos BUY / SELL + Líneas MTF)
             if (showVsa) {
-                // Agregar Círculos VSA para el gráfico activo
                 const activeVsa = analyzeVSAData(currentCandleData);
                 activeVsa.events.forEach(e => {
                     allMarkers.push({
@@ -437,7 +466,6 @@
                     });
                 });
 
-                // Procesar líneas MTF
                 let lines = [];
                 const activeTF = timeframeSelect.value;
 
@@ -475,7 +503,6 @@
                 vsaLinesToDraw = lines;
             }
 
-            // Ordenar marcadores de manera ascendente
             candlestickSeries.setMarkers(allMarkers.sort((a, b) => a.time - b.time));
             drawOverlay();
         }
