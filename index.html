@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - High Probability Signals Only</title>
+    <title>Bitcoin Trading Terminal - Immediate Signal Trigger</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -165,12 +165,12 @@
                 <option value="4h">4 Horas</option>
                 <option value="1d">1 Diario</option>
             </select>
-            <span class="status-badge">Filtro Alta Probabilidad Activo ✓</span>
+            <span class="status-badge">Disparo Inmediato Activo ✓</span>
         </div>
 
         <div class="controls-group">
             <button id="toggle-vsa" class="active">S/R Ballenas VSA</button>
-            <button id="toggle-supertrend" class="active">Solo Señales A+</button>
+            <button id="toggle-supertrend" class="active">Entradas al Instante</button>
             <button id="toggle-dash" class="active">Dashboard MTF</button>
         </div>
     </div>
@@ -183,13 +183,13 @@
 
         <div id="dashboard">
             <div class="dash-module">
-                <h4>SEÑAL A+ CONFIRMADA</h4>
+                <h4>DISPARO DE ENTRADA EN TIEMPO REAL</h4>
                 <div class="signal-box">
-                    <div class="signal-title">FILTRO ULTRA-ESTRICTO</div>
-                    <div id="signal-status" class="signal-val badge-neu">NO HAY SEÑAL VALIDA</div>
+                    <div class="signal-title">ESTADO DE ORDEN</div>
+                    <div id="signal-status" class="signal-val badge-neu">BUSCANDO GATILLO</div>
                 </div>
                 <div class="dash-row"><span>Precio Entrada:</span><span id="signal-price" class="dash-val">--</span></div>
-                <div class="dash-row"><span>Hora Confirmación:</span><span id="signal-time" class="dash-val">--</span></div>
+                <div class="dash-row"><span>Hora Exacta:</span><span id="signal-time" class="dash-val">--</span></div>
             </div>
 
             <div id="dash-module-vsa" class="dash-module">
@@ -209,11 +209,10 @@
             </div>
 
             <div class="dash-module">
-                <h4>REGLAS DE FILTRADO A+</h4>
-                <div class="dash-row"><span>1. VSA Whale:</span><span class="dash-val">> 2.0x Avg Vol</span></div>
-                <div class="dash-row"><span>2. Supertrend:</span><span class="dash-val">Inversión Local</span></div>
-                <div class="dash-row"><span>3. Delta Neto:</span><span class="dash-val">> 55% Dominio</span></div>
-                <div class="dash-row"><span>4. Margen Temporal:</span><span class="dash-val">≤ 2 Velas</span></div>
+                <h4>REGLAS DE GATILLO INMEDIATO</h4>
+                <div class="dash-row"><span>Ejecución:</span><span class="dash-val">Tick Actual</span></div>
+                <div class="dash-row"><span>Filtro Vol. Ballena:</span><span class="dash-val">> 2.0x Avg</span></div>
+                <div class="dash-row"><span>Confirmación ST:</span><span class="dash-val">Al romper nivel</span></div>
             </div>
         </div>
     </div>
@@ -331,7 +330,6 @@
             return { signals };
         }
 
-        // Análisis VSA con umbral de Ballena más estricto (factor = 2.0)
         function analyzeVSAData(candles, period = 20, factor = 2.0) {
             if (!candles || candles.length < period + 1) return { events: [], lastSupport: null, lastResistance: null, lastStats: null };
             let events = [], lastSupport = null, lastResistance = null;
@@ -346,7 +344,6 @@
                 const range = candle.high - candle.low;
                 const effVol = candle.volume || 1.0;
                 
-                // Filtro Estricto: El volumen debe ser mayor a 2.0x el promedio
                 const isWhale = effVol > (avgVol * factor);
 
                 const volBuy = range === 0 ? effVol / 2 : effVol * ((candle.close - candle.low) / range);
@@ -360,16 +357,15 @@
                 const mInf = Math.min(candle.open, candle.close) - candle.low;
                 const mSup = candle.high - Math.max(candle.open, candle.close);
 
-                // Filtro Delta Estricto (> 55% de la vela dominada por compra o venta)
                 const isBuy = isWhale && (volBuy / effVol > 0.55 || mInf > (range * 0.40));
                 const isSell = isWhale && (volSell / effVol > 0.55 || mSup > (range * 0.40));
 
                 if (isBuy) {
-                    const ev = { index: i, time: candle.time, type: 'BUY', price: candle.low, pctBuy: (volBuy / effVol) * 100 };
+                    const ev = { index: i, time: candle.time, type: 'BUY', price: candle.low };
                     events.push(ev);
                     lastSupport = ev;
                 } else if (isSell) {
-                    const ev = { index: i, time: candle.time, type: 'SELL', price: candle.high, pctSell: (volSell / effVol) * 100 };
+                    const ev = { index: i, time: candle.time, type: 'SELL', price: candle.high };
                     events.push(ev);
                     lastResistance = ev;
                 }
@@ -488,55 +484,52 @@
 
         async function processIndicators() {
             if (!currentCandleData || currentCandleData.length === 0) return;
-            let highProbMarkers = [];
+            let immediateMarkers = [];
 
             const st = calculateSupertrend(currentCandleData, 10, 3.0);
-            const activeVsa = analyzeVSAData(currentCandleData, 20, 2.0); // Factor Ballena = 2.0x
-            let lastStrategicSignal = null;
+            const activeVsa = analyzeVSAData(currentCandleData, 20, 2.0);
+            let activeTriggerSignal = null;
 
-            // ALGORITMO DE FILTRADO DE ALTA PROBABILIDAD (A+)
+            // DETECCIÓN E INTEGRACIÓN DE DISPARO AL INSTANTE
             if (showSupertrend) {
                 st.signals.forEach(stSig => {
-                    // Criterio 1: Debe haber una Ballena VSA dentro de un margen estrecho (≤ 2 velas)
                     const matchingVsa = activeVsa.events.find(vsaEv => 
                         vsaEv.type === stSig.type && Math.abs(vsaEv.index - stSig.index) <= 2
                     );
 
-                    // Criterio 2: Confirmación triple
                     if (matchingVsa) {
-                        highProbMarkers.push({
+                        immediateMarkers.push({
                             time: stSig.time,
                             position: stSig.type === 'BUY' ? 'belowBar' : 'aboveBar',
                             color: stSig.type === 'BUY' ? '#2ea043' : '#f85149',
                             shape: stSig.type === 'BUY' ? 'arrowUp' : 'arrowDown',
-                            text: `A+ ${stSig.type}`
+                            text: `ENTRY NOW (${stSig.type})`
                         });
 
-                        lastStrategicSignal = {
+                        activeTriggerSignal = {
                             type: stSig.type,
                             price: stSig.close,
-                            time: new Date(stSig.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            time: new Date(stSig.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                         };
                     }
                 });
             }
 
-            // Actualizar estado en el Dashboard
+            // Actualizar interfaz en tiempo real
             const statusElem = document.getElementById("signal-status");
             const priceElem = document.getElementById("signal-price");
             const timeElem = document.getElementById("signal-time");
 
-            if (lastStrategicSignal) {
-                statusElem.innerText = `SEÑAL A+ ${lastStrategicSignal.type}`;
-                statusElem.className = `signal-val ${lastStrategicSignal.type === 'BUY' ? 'txt-buy' : 'txt-sell'}`;
-                priceElem.innerText = `$${lastStrategicSignal.price.toFixed(2)}`;
-                timeElem.innerText = lastStrategicSignal.time;
+            if (activeTriggerSignal) {
+                statusElem.innerText = `ENTRADA ACTIVA (${activeTriggerSignal.type})`;
+                statusElem.className = `signal-val ${activeTriggerSignal.type === 'BUY' ? 'txt-buy' : 'txt-sell'}`;
+                priceElem.innerText = `$${activeTriggerSignal.price.toFixed(2)}`;
+                timeElem.innerText = activeTriggerSignal.time;
             } else {
-                statusElem.innerText = "NO HAY SEÑAL VALIDA";
+                statusElem.innerText = "ESPERANDO GATILLO";
                 statusElem.className = "signal-val badge-neu";
             }
 
-            // Matriz VSA MTF
             if (showVsa) {
                 const activeTF = timeframeSelect.value;
                 const mtfPromises = mtfTimeframes.map(cfg => 
@@ -591,7 +584,7 @@
                 vsaLinesToDraw = [];
             }
 
-            candlestickSeries.setMarkers(highProbMarkers.sort((a, b) => a.time - b.time));
+            candlestickSeries.setMarkers(immediateMarkers.sort((a, b) => a.time - b.time));
             drawOverlay();
         }
 
