@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Trading Terminal - Supertrend Filtered</title>
+    <title>Bitcoin Trading Terminal - Extended History</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -330,7 +330,6 @@
             const stMarkers = [];
             let lastSignal = null;
 
-            // Filtro por Volumen Promedio Móvil (20 velas)
             let rollingVol = 0;
             for (let i = 0; i < 20 && i < len; i++) rollingVol += (candles[i].volume || 1);
 
@@ -338,7 +337,6 @@
                 rollingVol += (candles[i].volume || 1) - (candles[i - 20].volume || 1);
                 const avgVol = rollingVol / 20;
                 
-                // Exige que el volumen de la vela supere el promedio para confirmar impulso
                 const hasHighVolume = (candles[i].volume || 0) > (avgVol * 1.2);
 
                 if (trend[i] === 1 && trend[i - 1] === -1 && hasHighVolume) {
@@ -352,18 +350,37 @@
             return { stMarkers, lastSignal };
         }
 
-        async function fetchKlines(interval, limit = 500) {
+        // FUNCIÓN CREADA PARA CARGAR HISTORIAL EXTENDIDO (1500 VELAS VIA PAGINACIÓN)
+        async function fetchExtendedKlines(interval, totalTarget = 1500) {
             const is1s = interval === "1s";
             const endpoint = is1s ? 'uiKlines' : 'klines';
-            const url = `https://api.binance.com/api/v3/${endpoint}?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
+            let allCandles = [];
+            let endTime = null;
 
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("REST API Error");
-            const data = await res.json();
+            while (allCandles.length < totalTarget) {
+                const fetchLimit = Math.min(1000, totalTarget - allCandles.length);
+                let url = `https://api.binance.com/api/v3/${endpoint}?symbol=BTCUSDT&interval=${interval}&limit=${fetchLimit}`;
+                if (endTime) url += `&endTime=${endTime}`;
 
-            return data.map(d => ({
-                time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
-            }));
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("REST API Error");
+                const data = await res.json();
+
+                if (!data || data.length === 0) break;
+
+                const batch = data.map(d => ({
+                    time: Math.floor(d[0] / 1000), open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
+                }));
+
+                // La respuesta viene ordenada cronológicamente; la unimos con la acumulada
+                allCandles = batch.concat(allCandles);
+                endTime = data[0][0] - 1; // Ajustamos endTime a justo antes de la primera vela recibida
+
+                if (data.length < fetchLimit) break;
+            }
+
+            // Eliminar duplicados si los hubiera y ordenar correctamente
+            return allCandles.sort((a, b) => a.time - b.time);
         }
 
         function processIndicators(isInitialLoad = false) {
@@ -394,13 +411,13 @@
 
         async function renderChart() {
             statusEl.style.display = "block";
-            statusEl.innerText = "Cargando datos...";
+            statusEl.innerText = "Cargando 1500 velas...";
 
             const selectedInterval = timeframeSelect.value;
             startCandleTimer(selectedInterval);
 
             try {
-                currentCandleData = await fetchKlines(selectedInterval, 500);
+                currentCandleData = await fetchExtendedKlines(selectedInterval, 1500);
                 candlestickSeries.setData(currentCandleData);
                 processIndicators(true);
                 connectWebSocket(selectedInterval);
@@ -433,7 +450,7 @@
                     } else {
                         currentCandleData.push(updatedCandle);
                     }
-                    if (currentCandleData.length > 500) currentCandleData.shift();
+                    if (currentCandleData.length > 1500) currentCandleData.shift();
                     
                     if (k.x) processIndicators(false);
                 }
