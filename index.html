@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -78,8 +77,8 @@
         <div class="controls">
             <div id="status" class="status-badge">Conectando...</div>
             <select id="tf-htf">
-                <option value="1h" selected>HTF: 1 Hora</option>
-                <option value="4h">HTF: 4 Horas</option>
+                <option value="1h">HTF: 1 Hora</option>
+                <option value="4h" selected>HTF: 4 Horas</option>
             </select>
             <select id="tf-ltf">
                 <option value="1m">LTF: 1 Minuto</option>
@@ -92,7 +91,7 @@
     <div id="workspace">
         <!-- VELA HTF DIBUJADA -->
         <div id="htf-draw-panel">
-            <div class="panel-title" id="htf-name-label">1 HOUR - HTF</div>
+            <div class="panel-title" id="htf-name-label">4 HOUR - HTF</div>
             <svg id="htf-svg" viewBox="0 0 160 400">
                 <line id="htf-wick" x1="80" y1="40" x2="80" y2="360" stroke="#2962ff" stroke-width="3" />
                 <rect id="htf-body" x="40" y="100" width="80" height="180" fill="#2962ff" stroke="#2962ff" stroke-width="2" rx="3" />
@@ -142,9 +141,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         const statusEl = document.getElementById("status");
         const selectHTF = document.getElementById("tf-htf");
-        selectHTF.value = "1h"; 
         const selectLTF = document.getElementById("tf-ltf");
-        selectLTF.value = "5m"; 
         const chartDom = document.getElementById("chart-container");
 
         const boxDecision = document.getElementById("auto-decision-box");
@@ -153,7 +150,7 @@
 
         let currentCandleData = [];
         let activePriceLines = [];
-        let persistentMarkers = []; // Almacena marcadores históricos permanentemente
+        let persistentMarkers = [];
         let currentHigh = 0, currentLow = 0, currentEQ = 0;
         let ws = null;
 
@@ -295,7 +292,7 @@
             document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
         }
 
-        // Evaluar historiales para añadir señales permanentes
+        // Generar señales históricas (Etiquetas limpias: BUY o SELL únicamente)
         function generateHistoricalSignals() {
             persistentMarkers = [];
             if (!currentHigh || !currentLow || currentCandleData.length < 2) return;
@@ -303,24 +300,24 @@
             for (let i = 0; i < currentCandleData.length; i++) {
                 const bar = currentCandleData[i];
 
-                // Condición BUY: Barrido de SSL (Mínimo perfora SSL pero cierra por encima)
+                // Condición BUY
                 if (bar.low < currentLow && bar.close > currentLow) {
                     persistentMarkers.push({
                         time: bar.time,
                         position: 'belowBar',
                         color: '#00e676',
                         shape: 'arrowUp',
-                        text: 'BUY (SSL Sweep)'
+                        text: 'BUY'
                     });
                 }
-                // Condición SELL: Barrido de BSL (Máximo perfora BSL pero cierra por debajo)
+                // Condición SELL
                 else if (bar.high > currentHigh && bar.close < currentHigh) {
                     persistentMarkers.push({
                         time: bar.time,
                         position: 'aboveBar',
                         color: '#ff5252',
                         shape: 'arrowDown',
-                        text: 'SELL (BSL Sweep)'
+                        text: 'SELL'
                     });
                 }
             }
@@ -334,7 +331,6 @@
 
             const lastBar = currentCandleData[currentCandleData.length - 1];
 
-            // Revisar si la última vela generó señal nueva
             const hasBuyMarker = persistentMarkers.some(m => m.time === lastBar.time && m.shape === 'arrowUp');
             const hasSellMarker = persistentMarkers.some(m => m.time === lastBar.time && m.shape === 'arrowDown');
 
