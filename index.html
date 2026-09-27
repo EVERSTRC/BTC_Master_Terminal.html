@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -152,6 +153,7 @@
 
         let currentCandleData = [];
         let activePriceLines = [];
+        let persistentMarkers = []; // Almacena marcadores históricos permanentemente
         let currentHigh = 0, currentLow = 0, currentEQ = 0;
         let ws = null;
 
@@ -177,7 +179,7 @@
         });
         resizeObserver.observe(chartDom);
 
-        // LÓGICA DE TIEMPO RESTANTE
+        // RELOJES Y TEMPORIZADORES
         function formatCountdown(targetSeconds) {
             if (targetSeconds <= 0) return "00:00:00";
             const hrs = Math.floor(targetSeconds / 3600);
@@ -200,17 +202,12 @@
         function updateTimers() {
             const now = Math.floor(Date.now() / 1000);
 
-            // Cierre 4H
-            const seconds4h = 14400;
-            const remaining4h = seconds4h - (now % seconds4h);
+            const remaining4h = 14400 - (now % 14400);
             document.getElementById('timer-4h').innerText = formatCountdown(remaining4h);
 
-            // Cierre 1H
-            const seconds1h = 3600;
-            const remaining1h = seconds1h - (now % seconds1h);
+            const remaining1h = 3600 - (now % 3600);
             document.getElementById('timer-1h').innerText = formatCountdown(remaining1h);
 
-            // Cierre LTF
             const ltfVal = selectLTF.value;
             document.getElementById('label-ltf-timer').innerText = `Cierre LTF (${ltfVal}):`;
             const secondsLtf = getSecondsInTF(ltfVal);
@@ -221,7 +218,7 @@
         setInterval(updateTimers, 1000);
         updateTimers();
 
-        // Fetch de velas históricas con fallback de endpoints
+        // Fetch de velas históricas con fallback
         async function fetchKlinesHistory(interval, limit = 500) {
             const endpoints = [
                 `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`,
@@ -247,7 +244,7 @@
             return [];
         }
 
-        // Cargar y actualizar líneas tanto de 4H como de 1H
+        // Cargar niveles HTF (4H y 1H)
         async function loadHTFData() {
             const selectedVal = selectHTF.value;
             document.getElementById('htf-name-label').innerText = `${selectedVal.toUpperCase()} - HTF CANDLE`;
@@ -255,7 +252,7 @@
             activePriceLines.forEach(line => series.removePriceLine(line));
             activePriceLines = [];
 
-            // 1. OBTENER Y DIBUJAR SIEMPRE 4H (Líneas Gruesas)
+            // 1. Niveles 4H
             const htfData4h = await fetchKlinesHistory('4h', 5);
             if (htfData4h.length >= 2) {
                 const candle4h = htfData4h[htfData4h.length - 2];
@@ -274,7 +271,7 @@
                 }
             }
 
-            // 2. OBTENER Y DIBUJAR 1H (SIEMPRE O SEGÚN SELECCIÓN)
+            // 2. Niveles 1H
             const htfData1h = await fetchKlinesHistory('1h', 5);
             if (htfData1h.length >= 2) {
                 const candle1h = htfData1h[htfData1h.length - 2];
@@ -298,24 +295,58 @@
             document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
         }
 
-        // Evaluar reglas de trading automático
+        // Evaluar historiales para añadir señales permanentes
+        function generateHistoricalSignals() {
+            persistentMarkers = [];
+            if (!currentHigh || !currentLow || currentCandleData.length < 2) return;
+
+            for (let i = 0; i < currentCandleData.length; i++) {
+                const bar = currentCandleData[i];
+
+                // Condición BUY: Barrido de SSL (Mínimo perfora SSL pero cierra por encima)
+                if (bar.low < currentLow && bar.close > currentLow) {
+                    persistentMarkers.push({
+                        time: bar.time,
+                        position: 'belowBar',
+                        color: '#00e676',
+                        shape: 'arrowUp',
+                        text: 'BUY (SSL Sweep)'
+                    });
+                }
+                // Condición SELL: Barrido de BSL (Máximo perfora BSL pero cierra por debajo)
+                else if (bar.high > currentHigh && bar.close < currentHigh) {
+                    persistentMarkers.push({
+                        time: bar.time,
+                        position: 'aboveBar',
+                        color: '#ff5252',
+                        shape: 'arrowDown',
+                        text: 'SELL (BSL Sweep)'
+                    });
+                }
+            }
+
+            series.setMarkers(persistentMarkers);
+        }
+
+        // Evaluar estado actual del banner de decisión
         function evaluateAutomatedTrade() {
             if (currentCandleData.length < 2 || !currentHigh || !currentLow) return;
 
             const lastBar = currentCandleData[currentCandleData.length - 1];
-            const markers = [];
 
-            if (lastBar.low < currentLow && lastBar.close > currentLow) {
+            // Revisar si la última vela generó señal nueva
+            const hasBuyMarker = persistentMarkers.some(m => m.time === lastBar.time && m.shape === 'arrowUp');
+            const hasSellMarker = persistentMarkers.some(m => m.time === lastBar.time && m.shape === 'arrowDown');
+
+            if (hasBuyMarker || (lastBar.low < currentLow && lastBar.close > currentLow)) {
                 boxDecision.className = "state-buy";
-                txtAction.innerText = "🚀 ENTRAR EN COMPRA (LONG)";
+                txtAction.innerText = "🚀 ENTRAR EN COMPRA (BUY)";
                 txtReason.innerText = `Barrido de SSL detectado. Stop Loss: $${lastBar.low.toFixed(1)} | TP: $${currentEQ.toFixed(1)}`;
-                markers.push({ time: lastBar.time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'COMPRA (SSL Sweep)' });
             }
-            else if (lastBar.high > currentHigh && lastBar.close < currentHigh) {
+            else if (hasSellMarker || (lastBar.high > currentHigh && lastBar.close < currentHigh)) {
                 boxDecision.className = "state-sell";
-                txtAction.innerText = "🐻 ENTRAR EN VENTA (SHORT)";
+                txtAction.innerText = "🐻 ENTRAR EN VENTA (SELL)";
                 txtReason.innerText = `Barrido de BSL detectado. Stop Loss: $${lastBar.high.toFixed(1)} | TP: $${currentEQ.toFixed(1)}`;
-                markers.push({ time: lastBar.time, position: 'aboveBar', color: '#ff5252', shape: 'arrowDown', text: 'VENTA (BSL Sweep)' });
             }
             else if (lastBar.close > currentHigh || lastBar.close < currentLow) {
                 boxDecision.className = "state-no-trade";
@@ -327,11 +358,9 @@
                 txtAction.innerText = "⏳ ESPERAR OPORTUNIDAD";
                 txtReason.innerText = "El precio está en zona neutra. Esperando barrido en BSL o SSL.";
             }
-
-            series.setMarkers(markers);
         }
 
-        // Cargar historial LTF y abrir la conexión WebSocket
+        // Cargar historial LTF y conectar WebSocket
         async function loadLTFData() {
             statusEl.innerText = "Cargando...";
             statusEl.style.color = "#ffd700";
@@ -343,6 +372,7 @@
 
             if (currentCandleData.length > 0) {
                 series.setData(currentCandleData);
+                generateHistoricalSignals();
                 evaluateAutomatedTrade();
             }
 
@@ -381,6 +411,7 @@
                     currentCandleData.push(candle);
                 }
 
+                generateHistoricalSignals();
                 evaluateAutomatedTrade();
             };
         }
@@ -392,6 +423,7 @@
 
         selectHTF.addEventListener("change", async () => {
             await loadHTFData();
+            generateHistoricalSignals();
             evaluateAutomatedTrade();
         });
 
