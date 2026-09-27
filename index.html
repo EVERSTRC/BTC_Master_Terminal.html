@@ -151,6 +151,10 @@
         let currentCandleData = [];
         let activePriceLines = [];
         let persistentMarkers = [];
+        
+        // Almacenamiento independiente de niveles 1H y 4H
+        let levels1H = { high: 0, low: 0, eq: 0 };
+        let levels4H = { high: 0, low: 0, eq: 0 };
         let currentHigh = 0, currentLow = 0, currentEQ = 0;
         let ws = null;
 
@@ -253,18 +257,18 @@
             const htfData4h = await fetchKlinesHistory('4h', 5);
             if (htfData4h.length >= 2) {
                 const candle4h = htfData4h[htfData4h.length - 2];
-                const high4h = candle4h.high;
-                const low4h = candle4h.low;
-                const eq4h = low4h + (high4h - low4h) * 0.5;
+                levels4H.high = candle4h.high;
+                levels4H.low = candle4h.low;
+                levels4H.eq = levels4H.low + (levels4H.high - levels4H.low) * 0.5;
 
-                activePriceLines.push(series.createPriceLine({ price: high4h, color: '#ff5252', lineWidth: 4, lineStyle: 2, title: 'BSL (4H)' }));
-                activePriceLines.push(series.createPriceLine({ price: eq4h, color: '#ffb300', lineWidth: 3, lineStyle: 0, title: '50% EQ (4H)' }));
-                activePriceLines.push(series.createPriceLine({ price: low4h, color: '#00e676', lineWidth: 4, lineStyle: 2, title: 'SSL (4H)' }));
+                activePriceLines.push(series.createPriceLine({ price: levels4H.high, color: '#ff5252', lineWidth: 4, lineStyle: 2, title: 'BSL (4H)' }));
+                activePriceLines.push(series.createPriceLine({ price: levels4H.eq, color: '#ffb300', lineWidth: 3, lineStyle: 0, title: '50% EQ (4H)' }));
+                activePriceLines.push(series.createPriceLine({ price: levels4H.low, color: '#00e676', lineWidth: 4, lineStyle: 2, title: 'SSL (4H)' }));
 
                 if (selectedVal === '4h') {
-                    currentHigh = high4h;
-                    currentLow = low4h;
-                    currentEQ = eq4h;
+                    currentHigh = levels4H.high;
+                    currentLow = levels4H.low;
+                    currentEQ = levels4H.eq;
                 }
             }
 
@@ -272,18 +276,18 @@
             const htfData1h = await fetchKlinesHistory('1h', 5);
             if (htfData1h.length >= 2) {
                 const candle1h = htfData1h[htfData1h.length - 2];
-                const high1h = candle1h.high;
-                const low1h = candle1h.low;
-                const eq1h = low1h + (high1h - low1h) * 0.5;
+                levels1H.high = candle1h.high;
+                levels1H.low = candle1h.low;
+                levels1H.eq = levels1H.low + (levels1H.high - levels1H.low) * 0.5;
 
                 if (selectedVal === '1h') {
-                    activePriceLines.push(series.createPriceLine({ price: high1h, color: '#ff8a80', lineWidth: 2, lineStyle: 3, title: 'BSL (1H)' }));
-                    activePriceLines.push(series.createPriceLine({ price: eq1h, color: '#ffe082', lineWidth: 2, lineStyle: 3, title: '50% EQ (1H)' }));
-                    activePriceLines.push(series.createPriceLine({ price: low1h, color: '#b9f6ca', lineWidth: 2, lineStyle: 3, title: 'SSL (1H)' }));
+                    activePriceLines.push(series.createPriceLine({ price: levels1H.high, color: '#ff8a80', lineWidth: 2, lineStyle: 3, title: 'BSL (1H)' }));
+                    activePriceLines.push(series.createPriceLine({ price: levels1H.eq, color: '#ffe082', lineWidth: 2, lineStyle: 3, title: '50% EQ (1H)' }));
+                    activePriceLines.push(series.createPriceLine({ price: levels1H.low, color: '#b9f6ca', lineWidth: 2, lineStyle: 3, title: 'SSL (1H)' }));
 
-                    currentHigh = high1h;
-                    currentLow = low1h;
-                    currentEQ = eq1h;
+                    currentHigh = levels1H.high;
+                    currentLow = levels1H.low;
+                    currentEQ = levels1H.eq;
                 }
             }
 
@@ -292,16 +296,23 @@
             document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
         }
 
-        // Generar señales históricas (Etiquetas limpias: BUY o SELL únicamente)
+        // Evalúa tanto 1H como 4H para no perder señales al cambiar la interfaz
         function generateHistoricalSignals() {
             persistentMarkers = [];
-            if (!currentHigh || !currentLow || currentCandleData.length < 2) return;
+            if (currentCandleData.length < 2) return;
 
             for (let i = 0; i < currentCandleData.length; i++) {
                 const bar = currentCandleData[i];
 
-                // Condición BUY
-                if (bar.low < currentLow && bar.close > currentLow) {
+                // Verificación contra niveles 4H
+                const isBuy4H = levels4H.low > 0 && bar.low < levels4H.low && bar.close > levels4H.low;
+                const isSell4H = levels4H.high > 0 && bar.high > levels4H.high && bar.close < levels4H.high;
+
+                // Verificación contra niveles 1H
+                const isBuy1H = levels1H.low > 0 && bar.low < levels1H.low && bar.close > levels1H.low;
+                const isSell1H = levels1H.high > 0 && bar.high > levels1H.high && bar.close < levels1H.high;
+
+                if (isBuy4H || isBuy1H) {
                     persistentMarkers.push({
                         time: bar.time,
                         position: 'belowBar',
@@ -309,9 +320,7 @@
                         shape: 'arrowUp',
                         text: 'BUY'
                     });
-                }
-                // Condición SELL
-                else if (bar.high > currentHigh && bar.close < currentHigh) {
+                } else if (isSell4H || isSell1H) {
                     persistentMarkers.push({
                         time: bar.time,
                         position: 'aboveBar',
@@ -325,7 +334,7 @@
             series.setMarkers(persistentMarkers);
         }
 
-        // Evaluar estado actual del banner de decisión
+        // Evaluar estado actual del banner de decisión basado en el HTF seleccionado
         function evaluateAutomatedTrade() {
             if (currentCandleData.length < 2 || !currentHigh || !currentLow) return;
 
