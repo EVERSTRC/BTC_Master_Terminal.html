@@ -66,8 +66,8 @@
         <div class="controls">
             <div id="status" class="status-badge">Conectando...</div>
             <select id="tf-htf">
-                <option value="1h">HTF: 1 Hora</option>
-                <option value="4h" selected>HTF: 4 Horas</option>
+                <option value="1h" selected>HTF: 1 Hora</option>
+                <option value="4h">HTF: 4 Horas</option>
             </select>
             <select id="tf-ltf">
                 <option value="1m">LTF: 1 Minuto</option>
@@ -80,12 +80,11 @@
     <div id="workspace">
         <!-- VELA HTF DIBUJADA -->
         <div id="htf-draw-panel">
-            <div class="panel-title" id="htf-name-label">4 HOUR - HTF</div>
+            <div class="panel-title" id="htf-name-label">1 HOUR - HTF</div>
             <svg id="htf-svg" viewBox="0 0 160 400">
                 <line id="htf-wick" x1="80" y1="40" x2="80" y2="360" stroke="#2962ff" stroke-width="3" />
                 <rect id="htf-body" x="40" y="100" width="80" height="180" fill="#2962ff" stroke="#2962ff" stroke-width="2" rx="3" />
 
-                <!-- Líneas SVG con mayor grosor (stroke-width: 3) -->
                 <line x1="10" y1="40" x2="150" y2="40" stroke="#ff5252" stroke-width="3" stroke-dasharray="4,4" />
                 <text x="15" y="32" fill="#ff5252" font-size="11" font-weight="bold">BSL (High)</text>
                 <text id="txt-bsl" x="145" y="32" fill="#ff5252" font-size="10" text-anchor="end">0.00</text>
@@ -115,7 +114,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         const statusEl = document.getElementById("status");
         const selectHTF = document.getElementById("tf-htf");
-        selectHTF.value = "4h"; 
+        selectHTF.value = "1h"; 
         const selectLTF = document.getElementById("tf-ltf");
         selectLTF.value = "5m"; 
         const chartDom = document.getElementById("chart-container");
@@ -177,31 +176,59 @@
             return [];
         }
 
-        // Cargar y actualizar la vela previa HTF (fijada permanentemente a 4h)
+        // Cargar y actualizar las líneas tanto de 4H como de 1H
         async function loadHTFData() {
-            // Se fuerza el cálculo sobre la temporalidad de 4h
-            const htfVal = "4h";
-            document.getElementById('htf-name-label').innerText = `4H - HTF CANDLE`;
+            const selectedVal = selectHTF.value;
+            document.getElementById('htf-name-label').innerText = `${selectedVal.toUpperCase()} - HTF CANDLE`;
 
-            const htfData = await fetchKlinesHistory(htfVal, 5);
-            if (htfData.length < 2) return;
-
-            const candle = htfData[htfData.length - 2];
-            currentHigh = candle.high;
-            currentLow = candle.low;
-            currentEQ = currentLow + (currentHigh - currentLow) * 0.5;
-
-            document.getElementById('txt-bsl').innerText = `$${currentHigh.toFixed(1)}`;
-            document.getElementById('txt-eq').innerText = `$${currentEQ.toFixed(1)}`;
-            document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
-
+            // Limpiar líneas anteriores
             activePriceLines.forEach(line => series.removePriceLine(line));
             activePriceLines = [];
 
-            // Se aumentó el grosor de las líneas a lineWidth: 4
-            activePriceLines.push(series.createPriceLine({ price: currentHigh, color: '#ff5252', lineWidth: 4, lineStyle: 2, title: 'BSL (4H)' }));
-            activePriceLines.push(series.createPriceLine({ price: currentEQ, color: '#ffb300', lineWidth: 3, lineStyle: 0, title: '50% EQ (4H)' }));
-            activePriceLines.push(series.createPriceLine({ price: currentLow, color: '#00e676', lineWidth: 4, lineStyle: 2, title: 'SSL (4H)' }));
+            // 1. OBTENER Y DIBUJAR SIEMPRE 4H (Líneas Gruesas / Estilo Dashed)
+            const htfData4h = await fetchKlinesHistory('4h', 5);
+            if (htfData4h.length >= 2) {
+                const candle4h = htfData4h[htfData4h.length - 2];
+                const high4h = candle4h.high;
+                const low4h = candle4h.low;
+                const eq4h = low4h + (high4h - low4h) * 0.5;
+
+                activePriceLines.push(series.createPriceLine({ price: high4h, color: '#ff5252', lineWidth: 4, lineStyle: 2, title: 'BSL (4H)' }));
+                activePriceLines.push(series.createPriceLine({ price: eq4h, color: '#ffb300', lineWidth: 3, lineStyle: 0, title: '50% EQ (4H)' }));
+                activePriceLines.push(series.createPriceLine({ price: low4h, color: '#00e676', lineWidth: 4, lineStyle: 2, title: 'SSL (4H)' }));
+
+                // Asignar por defecto a variables globales si está seleccionado 4H
+                if (selectedVal === '4h') {
+                    currentHigh = high4h;
+                    currentLow = low4h;
+                    currentEQ = eq4h;
+                }
+            }
+
+            // 2. OBTENER Y DIBUJAR 1H (Líneas Dotted de menor grosor si se selecciona o como apoyo)
+            const htfData1h = await fetchKlinesHistory('1h', 5);
+            if (htfData1h.length >= 2) {
+                const candle1h = htfData1h[htfData1h.length - 2];
+                const high1h = candle1h.high;
+                const low1h = candle1h.low;
+                const eq1h = low1h + (high1h - low1h) * 0.5;
+
+                // Si seleccionamos 1H, añadimos sus líneas al gráfico diferenciándolas
+                if (selectedVal === '1h') {
+                    activePriceLines.push(series.createPriceLine({ price: high1h, color: '#ff8a80', lineWidth: 2, lineStyle: 3, title: 'BSL (1H)' }));
+                    activePriceLines.push(series.createPriceLine({ price: eq1h, color: '#ffe082', lineWidth: 2, lineStyle: 3, title: '50% EQ (1H)' }));
+                    activePriceLines.push(series.createPriceLine({ price: low1h, color: '#b9f6ca', lineWidth: 2, lineStyle: 3, title: 'SSL (1H)' }));
+
+                    currentHigh = high1h;
+                    currentLow = low1h;
+                    currentEQ = eq1h;
+                }
+            }
+
+            // Actualizar etiquetas del panel lateral SVG
+            document.getElementById('txt-bsl').innerText = `$${currentHigh.toFixed(1)}`;
+            document.getElementById('txt-eq').innerText = `$${currentEQ.toFixed(1)}`;
+            document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
         }
 
         // Evaluar reglas de trading automático
