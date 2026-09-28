@@ -152,7 +152,6 @@
         let activePriceLines = [];
         let persistentMarkers = [];
         
-        // Almacenamiento independiente de niveles 1H y 4H
         let levels1H = { high: 0, low: 0, eq: 0 };
         let levels4H = { high: 0, low: 0, eq: 0 };
         let currentHigh = 0, currentLow = 0, currentEQ = 0;
@@ -296,7 +295,7 @@
             document.getElementById('txt-ssl').innerText = `$${currentLow.toFixed(1)}`;
         }
 
-        // Evalúa tanto 1H como 4H para no perder señales al cambiar la interfaz
+        // Marcadores compactos: B (1H), B (4H), S (1H), S (4H)
         function generateHistoricalSignals() {
             persistentMarkers = [];
             if (currentCandleData.length < 2) return;
@@ -304,29 +303,38 @@
             for (let i = 0; i < currentCandleData.length; i++) {
                 const bar = currentCandleData[i];
 
-                // Verificación contra niveles 4H
                 const isBuy4H = levels4H.low > 0 && bar.low < levels4H.low && bar.close > levels4H.low;
                 const isSell4H = levels4H.high > 0 && bar.high > levels4H.high && bar.close < levels4H.high;
 
-                // Verificación contra niveles 1H
                 const isBuy1H = levels1H.low > 0 && bar.low < levels1H.low && bar.close > levels1H.low;
                 const isSell1H = levels1H.high > 0 && bar.high > levels1H.high && bar.close < levels1H.high;
 
+                // Señal de Compra
                 if (isBuy4H || isBuy1H) {
+                    let labelText = "B (1H)";
+                    if (isBuy4H && isBuy1H) labelText = "B (1H/4H)";
+                    else if (isBuy4H) labelText = "B (4H)";
+
                     persistentMarkers.push({
                         time: bar.time,
                         position: 'belowBar',
                         color: '#00e676',
                         shape: 'arrowUp',
-                        text: 'BUY'
+                        text: labelText
                     });
-                } else if (isSell4H || isSell1H) {
+                } 
+                // Señal de Venta
+                else if (isSell4H || isSell1H) {
+                    let labelText = "S (1H)";
+                    if (isSell4H && isSell1H) labelText = "S (1H/4H)";
+                    else if (isSell4H) labelText = "S (4H)";
+
                     persistentMarkers.push({
                         time: bar.time,
                         position: 'aboveBar',
                         color: '#ff5252',
                         shape: 'arrowDown',
-                        text: 'SELL'
+                        text: labelText
                     });
                 }
             }
@@ -334,7 +342,7 @@
             series.setMarkers(persistentMarkers);
         }
 
-        // Evaluar estado actual del banner de decisión basado en el HTF seleccionado
+        // Evaluar estado actual del banner de decisión
         function evaluateAutomatedTrade() {
             if (currentCandleData.length < 2 || !currentHigh || !currentLow) return;
 
