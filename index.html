@@ -155,7 +155,12 @@
         let levels1H = { high: 0, low: 0, eq: 0 };
         let levels4H = { high: 0, low: 0, eq: 0 };
         let currentHigh = 0, currentLow = 0, currentEQ = 0;
+        
+        // Control de WebSocket y reconexión activa
         let ws = null;
+        let pingInterval = null;
+        let reconnectTimeout = null;
+        let currentInterval = selectLTF.value;
 
         const chart = LightweightCharts.createChart(chartDom, {
             width: chartDom.clientWidth,
@@ -373,15 +378,13 @@
             }
         }
 
-        // Cargar historial LTF y conectar WebSocket
+        // Cargar historial LTF
         async function loadLTFData() {
             statusEl.innerText = "Cargando...";
             statusEl.style.color = "#ffd700";
 
-            if (ws) ws.close();
-
-            const ltfVal = selectLTF.value;
-            currentCandleData = await fetchKlinesHistory(ltfVal, 500);
+            currentInterval = selectLTF.value;
+            currentCandleData = await fetchKlinesHistory(currentInterval, 500);
 
             if (currentCandleData.length > 0) {
                 series.setData(currentCandleData);
@@ -389,24 +392,53 @@
                 evaluateAutomatedTrade();
             }
 
-            connectWebSocket(ltfVal);
+            connectWebSocket(currentInterval);
         }
 
+        // WebSocket robusto con auto-reconexión y Keep-Alive
         function connectWebSocket(interval) {
+            clearTimeout(reconnectTimeout);
+            clearInterval(pingInterval);
+
+            if (ws) {
+                ws.onclose = null; // Evita loop doble de cierre
+                ws.close();
+            }
+
             ws = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${interval}`);
 
             ws.onopen = () => {
                 statusEl.innerText = "Conectado ✓";
                 statusEl.style.color = "#00e676";
+
+                // Mantiene activa la conexión enviando datos livianos
+                pingInterval = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ method: "PING" }));
+                    }
+                }, 30000);
             };
 
             ws.onerror = () => {
-                statusEl.innerText = "Error WS";
+                statusEl.innerText = "Reconectando...";
                 statusEl.style.color = "#ff1744";
+            };
+
+            ws.onclose = () => {
+                statusEl.innerText = "Reconectando...";
+                statusEl.style.color = "#ffb300";
+                clearInterval(pingInterval);
+                
+                // Intenta reconectar a los 2 segundos
+                reconnectTimeout = setTimeout(() => {
+                    connectWebSocket(currentInterval);
+                }, 2000);
             };
 
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
+                if (!msg.k) return;
+
                 const k = msg.k;
 
                 const candle = {
@@ -428,6 +460,15 @@
                 evaluateAutomatedTrade();
             };
         }
+
+        // Detecta cuando vuelves a la pestaña del navegador para sincronizar
+        document.addEventListener("visibilitychange", async () => {
+            if (document.visibilityState === "visible") {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    await loadLTFData();
+                }
+            }
+        });
 
         async function initApp() {
             await loadHTFData();
